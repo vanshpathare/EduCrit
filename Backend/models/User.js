@@ -1,5 +1,4 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
@@ -8,7 +7,6 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     email: {
       type: String,
       required: true,
@@ -16,30 +14,23 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
-
     password: {
       type: String,
       required: true,
       minlength: 6,
-      select: false, // do not return password by default
+      select: false,
     },
-
     institution: {
       type: String,
       required: true,
       trim: true,
     },
-
     avatar: {
-      type: String, // Cloudinary URL (optional)
+      type: String,
       default: "",
     },
   },
-  {
-    timestamps: true, // createdAt & updatedAt
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);
