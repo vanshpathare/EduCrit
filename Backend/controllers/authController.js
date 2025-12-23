@@ -69,7 +69,7 @@ module.exports.login = async function (req, res) {
       });
     }
 
-    let isMatch = bcrypt.compare(password, user.password);
+    let isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(400).json({
@@ -93,11 +93,7 @@ module.exports.login = async function (req, res) {
       user,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Something went wrong",
-      error,
-    });
+    next(error);
   }
 };
 
