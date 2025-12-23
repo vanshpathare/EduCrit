@@ -1,22 +1,59 @@
 const express = require("express");
-const app = express();
 const dotenv = require("dotenv");
-const connectDb = require("./config/db");
-const authRoutes = require("./routes/authRoutes");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
+
+const connectDb = require("./config/db");
+
+// Routes
+const authRoutes = require("./routes/authRoutes");
+const itemRoutes = require("./routes/itemRoutes");
+
+// Error middleware
+const errorMiddleware = require("./middlewares/errorMiddleware");
+
 dotenv.config();
 connectDb();
 
+const app = express();
+
+/**
+ * GLOBAL MIDDLEWARES
+ */
+
+// Parse cookies
 app.use(cookieParser());
+
+// Parse JSON & form data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Enable CORS (for frontend)
+app.use(
+  cors({
+    origin: "http://localhost:5173", // React frontend
+    credentials: true, // allow cookies
+  })
+);
+
+/**
+ * ROUTES
+ */
+
+// Auth routes (your old logic stays intact)
 app.use("/auth", authRoutes);
 
+// Item routes (new feature)
+app.use("/api/items", itemRoutes);
+
+// Test route
 app.get("/", (req, res) => {
   res.send("hey from server");
 });
 
-app.listen(3002, () => {
-  console.log("server running on port http://localhost:3002");
-});
+/**
+ * ERROR HANDLER (MUST BE LAST)
+ */
+app.use(errorMiddleware);
+
+module.exports = app;
