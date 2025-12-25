@@ -10,6 +10,33 @@ module.exports.createItem = async (req, res, next) => {
   try {
     const { title, description, category, sell, rent } = req.body;
 
+    // 🔒 At least 1 image required
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        message: "At least one image is required",
+      });
+    }
+
+    // 🔒 Maximum 4 images allowed
+    if (req.files.length > 4) {
+      return res.status(400).json({
+        message: "You can upload a maximum of 4 images",
+      });
+    }
+
+    // 🧠 Safe JSON parsing for sell & rent
+    let sellData = { enabled: false };
+    let rentData = { enabled: false };
+
+    try {
+      if (sell) sellData = JSON.parse(sell);
+      if (rent) rentData = JSON.parse(rent);
+    } catch {
+      return res.status(400).json({
+        message: "Invalid sell or rent format",
+      });
+    }
+
     const imageData = req.files.map((file) => ({
       url: file.path,
       public_id: file.filename,
@@ -19,8 +46,8 @@ module.exports.createItem = async (req, res, next) => {
       title,
       description,
       category,
-      sell: JSON.parse(sell),
-      rent: JSON.parse(rent),
+      sell: sellData,
+      rent: rentData,
       images: imageData,
       owner: req.user._id,
     });
@@ -112,15 +139,24 @@ module.exports.updateItem = async (req, res, next) => {
       "category",
       "sell",
       "rent",
-      "images",
       "isAvailable",
     ];
 
-    allowedFields.forEach((field) => {
+    for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
-        item[field] = req.body[field];
+        if (field === "sell" || field === "rent") {
+          try {
+            item[field] = JSON.parse(req.body[field]);
+          } catch {
+            return res.status(400).json({
+              message: "Invalid sell or rent format",
+            });
+          }
+        } else {
+          item[field] = req.body[field];
+        }
       }
-    });
+    }
 
     const updatedItem = await item.save();
     res.json(updatedItem);
@@ -172,6 +208,75 @@ module.exports.getMyListings = async (req, res, next) => {
       .lean();
 
     res.json(items);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update item images (add new images / delete selected images)
+ * @route   PUT /api/items/:id/images
+ * @access  Private (Owner only)
+ */
+
+module.exports.updateItemImages = async (req, res, next) => {
+  try {
+    const { imagesToDelete } = req.body;
+    const item = await Item.findById(req.params.id);
+
+    if (!item) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    // 🔐 Ownership check
+    if (item.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    /* =======================
+       1️⃣ DELETE SELECTED IMAGES
+       ======================= */
+    if (imagesToDelete) {
+      let ids;
+      try {
+        ids = JSON.parse(imagesToDelete);
+      } catch {
+        return res.status(400).json({
+          message: "Invalid imagesToDelete format",
+        });
+      }
+
+      for (const id of ids) {
+        await deleteFromCloudinary(id);
+      }
+
+      item.images = item.images.filter((img) => !ids.includes(img.public_id));
+    }
+
+    /* =======================
+       2️⃣ ADD NEW IMAGES
+       ======================= */
+    const newImagesCount = req.files ? req.files.length : 0;
+    const totalImages = item.images.length + newImagesCount;
+
+    // 🔒 Max 4 images total
+    if (totalImages > 4) {
+      return res.status(400).json({
+        message: "Maximum 4 images allowed per item",
+      });
+    }
+
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map((file) => ({
+        url: file.path,
+        public_id: file.filename,
+      }));
+
+      item.images.push(...newImages);
+    }
+
+    await item.save();
+    res.json(item);
   } catch (error) {
     next(error);
   }

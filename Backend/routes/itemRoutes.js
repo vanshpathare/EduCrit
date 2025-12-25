@@ -9,6 +9,7 @@ const {
   updateItem,
   deleteItem,
   getMyListings,
+  updateItemImages,
 } = require("../controllers/itemController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -43,5 +44,12 @@ router.put("/:id", authMiddleware, updateItem);
 
 // Soft delete item (owner only)
 router.delete("/:id", authMiddleware, deleteItem);
+
+router.put(
+  "/:id/images",
+  authMiddleware,
+  upload.array("images", 5),
+  updateItemImages
+);
 
 module.exports = router;
