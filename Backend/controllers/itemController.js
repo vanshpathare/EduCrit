@@ -1,4 +1,5 @@
 const Item = require("../models/Item");
+const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 
 /**
  * @desc    Create new item
@@ -7,15 +8,20 @@ const Item = require("../models/Item");
  */
 module.exports.createItem = async (req, res, next) => {
   try {
-    const { title, description, category, sell, rent, images } = req.body;
+    const { title, description, category, sell, rent } = req.body;
+
+    const imageData = req.files.map((file) => ({
+      url: file.path,
+      public_id: file.filename,
+    }));
 
     const item = await Item.create({
       title,
       description,
       category,
-      sell,
-      rent,
-      images,
+      sell: JSON.parse(sell),
+      rent: JSON.parse(rent),
+      images: imageData,
       owner: req.user._id,
     });
 
@@ -140,10 +146,15 @@ module.exports.deleteItem = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    // Delete images from Cloudinary
+    for (const image of item.images) {
+      await deleteFromCloudinary(image.public_id);
+    }
+
     item.isAvailable = false;
     await item.save();
 
-    res.status(204).send();
+    res.status(200).json({ message: "Item deleted successfully" });
   } catch (error) {
     next(error);
   }

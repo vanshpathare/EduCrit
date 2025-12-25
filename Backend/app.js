@@ -1,5 +1,7 @@
-const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
+
+const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
@@ -12,7 +14,6 @@ const itemRoutes = require("./routes/itemRoutes");
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
-dotenv.config();
 connectDb();
 
 const app = express();

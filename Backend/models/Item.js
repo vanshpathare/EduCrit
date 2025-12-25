@@ -46,10 +46,18 @@ const itemSchema = new mongoose.Schema(
       },
     },
 
-    images: {
-      type: [String], // Cloudinary URLs
-      required: true,
-    },
+    images: [
+      {
+        url: {
+          type: String,
+          required: true,
+        },
+        public_id: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
 
     owner: {
       type: mongoose.Schema.Types.ObjectId,

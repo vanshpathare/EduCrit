@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const upload = require("../middlewares/uploadMiddleware");
 
 const {
   createItem,
@@ -27,7 +28,12 @@ router.get("/:id", getItemById);
  */
 
 // Create new item
-router.post("/", authMiddleware, createItem);
+router.post(
+  "/",
+  authMiddleware,
+  upload.array("images", 5), // 🔥 THIS WAS MISSING
+  createItem
+);
 
 // Get logged-in user's listings
 router.get("/my-listings/me", authMiddleware, getMyListings);
