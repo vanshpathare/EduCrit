@@ -37,6 +37,23 @@ module.exports.createItem = async (req, res, next) => {
       });
     }
 
+    // 🔒 SELL validation
+    if (sellData.enabled) {
+      if (!sellData.price || sellData.price <= 0) {
+        return res.status(400).json({
+          message: "Sell price must be greater than 0 when sell is enabled",
+        });
+      }
+    }
+
+    // 🔒 RENT validation
+    if (rentData.enabled) {
+      if (!rentData.price || rentData.price <= 0 || !rentData.period) {
+        return res.status(400).json({
+          message: "Rent price and period are required when rent is enabled",
+        });
+      }
+    }
     const imageData = req.files.map((file) => ({
       url: file.path,
       public_id: file.filename,
