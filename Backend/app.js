@@ -10,6 +10,7 @@ const connectDb = require("./config/db");
 // Routes
 const authRoutes = require("./routes/authRoutes");
 const itemRoutes = require("./routes/itemRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
@@ -46,6 +47,9 @@ app.use("/auth", authRoutes);
 
 // Item routes (new feature)
 app.use("/api/items", itemRoutes);
+
+// User routes (avatar, profile, etc.)
+app.use("/api/users", userRoutes);
 
 // Test route
 app.get("/", (req, res) => {

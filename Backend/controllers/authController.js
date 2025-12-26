@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+//const jwt = require("jsonwebtoken");
+const generateToken = require("../utils/generateToken");
 
 module.exports.register = async (req, res) => {
   const { name, email, password, institution } = req.body;
@@ -29,9 +30,7 @@ module.exports.register = async (req, res) => {
       institution,
     });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "2d",
-    });
+    const token = generateToken(user._id);
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -77,9 +76,7 @@ module.exports.login = async function (req, res) {
       });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "2d",
-    });
+    const token = generateToken(user._id);
 
     res.cookie("token", token, {
       httpOnly: true,

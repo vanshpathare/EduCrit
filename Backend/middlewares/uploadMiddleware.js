@@ -4,11 +4,11 @@ const cloudinary = require("../config/cloudinary");
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "educrit_items",
+  params: (req, file) => ({
+    folder: req.uploadFolder || "educrit/items",
     allowed_formats: ["jpg", "jpeg", "png"],
     transformation: [{ width: 800, height: 800, crop: "limit" }],
-  },
+  }),
 });
 
 const upload = multer({
