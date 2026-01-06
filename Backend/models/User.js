@@ -26,8 +26,28 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     avatar: {
+      url: String,
+      public_id: String,
+    },
+    // For EMAIL VERIFICATION
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    emailVerificationOTP: {
       type: String,
-      default: "",
+    },
+
+    emailVerificationOTPExpiry: {
+      type: Date,
+    },
+    //For Forgot Password (OTP-based)
+    resetPasswordOTP: {
+      type: String,
+    },
+    resetPasswordOTPExpiry: {
+      type: Date,
     },
   },
   { timestamps: true }

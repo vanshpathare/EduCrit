@@ -10,6 +10,12 @@ module.exports.createItem = async (req, res, next) => {
   try {
     const { title, description, category, sell, rent } = req.body;
 
+    if (!title || !description || !category) {
+      return res.status(400).json({
+        message: "Title, description and category are required",
+      });
+    }
+
     // 🔒 At least 1 image required
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
@@ -69,7 +75,10 @@ module.exports.createItem = async (req, res, next) => {
       owner: req.user._id,
     });
 
-    res.status(201).json(item);
+    res.status(201).json({
+      message: "Item uploaded successfully",
+      item,
+    });
   } catch (error) {
     next(error);
   }
@@ -146,18 +155,17 @@ module.exports.updateItem = async (req, res, next) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
+    if (!item.isAvailable) {
+      return res.status(400).json({
+        message: "This item has been deleted and cannot be edited",
+      });
+    }
+
     if (item.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const allowedFields = [
-      "title",
-      "description",
-      "category",
-      "sell",
-      "rent",
-      "isAvailable",
-    ];
+    const allowedFields = ["title", "description", "category", "sell", "rent"];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
@@ -176,7 +184,10 @@ module.exports.updateItem = async (req, res, next) => {
     }
 
     const updatedItem = await item.save();
-    res.json(updatedItem);
+    res.status(200).json({
+      message: "Item updated successfully",
+      item: updatedItem,
+    });
   } catch (error) {
     next(error);
   }
@@ -197,6 +208,12 @@ module.exports.deleteItem = async (req, res, next) => {
 
     if (item.owner.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "Not authorized" });
+    }
+
+    if (!item.isAvailable) {
+      return res.status(400).json({
+        message: "Item already deleted",
+      });
     }
 
     // Delete images from Cloudinary
@@ -220,7 +237,7 @@ module.exports.deleteItem = async (req, res, next) => {
  */
 module.exports.getMyListings = async (req, res, next) => {
   try {
-    const items = await Item.find({ owner: req.user._id })
+    const items = await Item.find({ owner: req.user._id, isAvailable: true })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -243,6 +260,12 @@ module.exports.updateItemImages = async (req, res, next) => {
 
     if (!item) {
       return res.status(404).json({ message: "Item not found" });
+    }
+
+    if (!item.isAvailable) {
+      return res.status(400).json({
+        message: "This item has been deleted and cannot be edited",
+      });
     }
 
     // 🔐 Ownership check
@@ -292,8 +315,13 @@ module.exports.updateItemImages = async (req, res, next) => {
       item.images.push(...newImages);
     }
 
+    item.images.sort((a, b) => a.public_id.localeCompare(b.public_id));
+
     await item.save();
-    res.json(item);
+    res.status(200).json({
+      message: "Item images updated successfully",
+      images: item.images,
+    });
   } catch (error) {
     next(error);
   }

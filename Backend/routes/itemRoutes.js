@@ -21,34 +21,39 @@ const authMiddleware = require("../middlewares/authMiddleware");
 // Get all public listings
 router.get("/", getAllItems);
 
-// Get single item by ID
-router.get("/:id", getItemById);
-
 /**
  * PRIVATE ROUTES (Login required)
  */
+
+// Get logged-in user's listings ✅ MOVE UP
+router.get("/my-listings/me", authMiddleware, getMyListings);
 
 // Create new item
 router.post(
   "/",
   authMiddleware,
-  upload.array("images", 5), // 🔥 THIS WAS MISSING
+  upload.array("images", 4), // max 5 images
   createItem
 );
 
-// Get logged-in user's listings
-router.get("/my-listings/me", authMiddleware, getMyListings);
+/**
+ * DYNAMIC ROUTES (KEEP LAST)
+ */
 
-// Update item (owner only)
+// Get single item by ID
+router.get("/:id", getItemById);
+
+// Update item
 router.put("/:id", authMiddleware, updateItem);
 
-// Soft delete item (owner only)
+// Delete item
 router.delete("/:id", authMiddleware, deleteItem);
 
+// Update item images
 router.put(
   "/:id/images",
   authMiddleware,
-  upload.array("images", 5),
+  upload.array("images", 4),
   updateItemImages
 );
 
