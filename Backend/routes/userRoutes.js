@@ -8,21 +8,24 @@ const {
   deleteAvatar,
   updateProfile,
   changePassword,
+  deleteAccount,
 } = require("../controllers/userController");
+const { accountDeleteLimiter } = require("../middlewares/rateLimiter");
 
 router.put(
   "/avatar",
   authMiddleware,
   (req, res, next) => {
-    req.uploadFolder = "educrit/avatars";
+    req.uploadFolder = "avatars";
     next();
   },
   upload.single("avatar"),
   updateAvatar
 );
 
-router.delete("/avatar", authMiddleware, deleteAvatar);
 router.put("/profile", authMiddleware, updateProfile);
 router.put("/change-password", authMiddleware, changePassword);
+router.delete("/avatar", authMiddleware, deleteAvatar);
+router.delete("/account", authMiddleware, accountDeleteLimiter, deleteAccount);
 
 module.exports = router;

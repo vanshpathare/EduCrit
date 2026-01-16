@@ -49,6 +49,33 @@ const userSchema = new mongoose.Schema(
     resetPasswordOTPExpiry: {
       type: Date,
     },
+    termsAccepted: {
+      type: Boolean,
+      required: true,
+      default: false,
+    },
+    termsAcceptedAt: {
+      type: Date,
+    },
+    whatsapp: {
+      number: {
+        type: String,
+        trim: true,
+      },
+      isVerified: {
+        type: Boolean,
+        default: false,
+      },
+    },
+
+    phoneOTP: {
+      code: String,
+      expiresAt: Date,
+      attempts: {
+        type: Number,
+        default: 0,
+      },
+    },
   },
   { timestamps: true }
 );

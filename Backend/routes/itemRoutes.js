@@ -13,6 +13,7 @@ const {
 } = require("../controllers/itemController");
 
 const authMiddleware = require("../middlewares/authMiddleware");
+const { generalLimiter } = require("../middlewares/rateLimiter");
 
 /**
  * PUBLIC ROUTES
@@ -31,8 +32,9 @@ router.get("/my-listings/me", authMiddleware, getMyListings);
 // Create new item
 router.post(
   "/",
+  generalLimiter,
   authMiddleware,
-  upload.array("images", 4), // max 5 images
+  upload.array("images", 4), // max 4 images
   createItem
 );
 

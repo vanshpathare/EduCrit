@@ -14,11 +14,12 @@ const {
 
 const authMiddleware = require("../middlewares/authMiddleware");
 const otpRateLimiter = require("../middlewares/otpRateLimiter");
+const { authLimiter } = require("../middlewares/rateLimiter");
 
 // Auth ke liye
 router.post("/register", register);
-router.post("/login", login);
-router.post("/logout", logout);
+router.post("/login", authLimiter, login);
+router.post("/logout", authLimiter, logout);
 
 // Profile ke liye
 router.get("/me", authMiddleware, profile);

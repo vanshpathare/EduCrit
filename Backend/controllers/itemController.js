@@ -1,5 +1,15 @@
 const Item = require("../models/Item");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
+const allowedCategories = [
+  "books",
+  "hardware-projects",
+  "software-projects",
+  "electronics",
+  "stationery",
+  "lab-equipment",
+  "others",
+];
+// const allowedFields = ["title", "description", "category", "sell", "rent"];
 
 /**
  * @desc    Create new item
@@ -13,6 +23,12 @@ module.exports.createItem = async (req, res, next) => {
     if (!title || !description || !category) {
       return res.status(400).json({
         message: "Title, description and category are required",
+      });
+    }
+
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({
+        message: "Invalid category selected",
       });
     }
 
@@ -97,7 +113,13 @@ module.exports.getAllItems = async (req, res, next) => {
 
     const filter = { isAvailable: true };
 
-    if (req.query.category) filter.category = req.query.category;
+    if (req.query.category) {
+      if (!allowedCategories.includes(req.query.category)) {
+        return res.status(400).json({ message: "Invalid category filter" });
+      }
+      filter.category = req.query.category;
+    }
+
     if (req.query.sell === "true") filter["sell.enabled"] = true;
     if (req.query.rent === "true") filter["rent.enabled"] = true;
 
@@ -170,17 +192,60 @@ module.exports.updateItem = async (req, res, next) => {
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         if (field === "sell" || field === "rent") {
+          let parsed;
           try {
-            item[field] = JSON.parse(req.body[field]);
+            parsed =
+              typeof req.body[field] === "string"
+                ? JSON.parse(req.body[field])
+                : req.body[field];
           } catch {
             return res.status(400).json({
               message: "Invalid sell or rent format",
             });
           }
-        } else {
+
+          if (field === "sell" && parsed.enabled) {
+            if (!parsed.price || parsed.price <= 0) {
+              return res.status(400).json({
+                message: "Sell price must be greater than 0",
+              });
+            }
+          }
+
+          if (field === "rent" && parsed.enabled) {
+            if (!parsed.price || parsed.price <= 0 || !parsed.period) {
+              return res.status(400).json({
+                message: "Rent price and period are required",
+              });
+            }
+          }
+
+          item[field] = parsed;
+        } else if (field === "category") {
+          if (!allowedCategories.includes(req.body[field])) {
+            return res.status(400).json({
+              message: "Invalid category selected",
+            });
+          }
           item[field] = req.body[field];
         }
       }
+    }
+
+    // if (Object.keys(req.body).length === 0) {
+    //   return res.status(400).json({
+    //     message: "At least one field must be updated",
+    //   });
+    // }
+
+    const hasValidUpdate = allowedFields.some(
+      (field) => req.body[field] !== undefined
+    );
+
+    if (!hasValidUpdate) {
+      return res.status(400).json({
+        message: "At least one valid field must be updated",
+      });
     }
 
     const updatedItem = await item.save();
@@ -273,6 +338,12 @@ module.exports.updateItemImages = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
+    if (!imagesToDelete && (!req.files || req.files.length === 0)) {
+      return res.status(400).json({
+        message: "No images provided to update",
+      });
+    }
+
     /* =======================
        1️⃣ DELETE SELECTED IMAGES
        ======================= */
@@ -314,8 +385,6 @@ module.exports.updateItemImages = async (req, res, next) => {
 
       item.images.push(...newImages);
     }
-
-    item.images.sort((a, b) => a.public_id.localeCompare(b.public_id));
 
     await item.save();
     res.status(200).json({

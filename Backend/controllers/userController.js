@@ -1,42 +1,7 @@
-// const User = require("../models/User");
-// const cloudinary = require("../config/cloudinary");
-
-// /**
-//  * @desc    Upload or update user avatar
-//  * @route   PUT /api/users/avatar
-//  * @access  Private
-//  */
-// module.exports.updateAvatar = async (req, res, next) => {
-//   try {
-//     if (!req.file) {
-//       return res.status(400).json({
-//         message: "Avatar image is required",
-//       });
-//     }
-
-//     const user = await User.findById(req.user._id);
-
-//     // 🔥 Delete old avatar from Cloudinary (if exists)
-//     if (user.avatar) {
-//       const publicId = user.avatar.split("/").pop().split(".")[0];
-//       await cloudinary.uploader.destroy(`educit/avatars/${publicId}`);
-//     }
-
-//     // Save new avatar URL
-//     user.avatar = req.file.path;
-//     await user.save();
-
-//     res.json({
-//       message: "Avatar updated successfully",
-//       avatar: user.avatar,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
 const User = require("../models/User");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
+const validatePassword = require("../utils/validatePassword");
+const { deleteUserAccount } = require("../services/accountService");
 const bcrypt = require("bcryptjs");
 
 /**
@@ -54,6 +19,12 @@ module.exports.updateAvatar = async (req, res, next) => {
 
     const user = await User.findById(req.user._id);
 
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
     // Delete old avatar if exists
     if (user.avatar?.public_id) {
       await deleteFromCloudinary(user.avatar.public_id);
@@ -66,7 +37,7 @@ module.exports.updateAvatar = async (req, res, next) => {
 
     await user.save();
 
-    res.json({
+    res.status(200).json({
       message: "Avatar updated successfully",
       avatar: user.avatar,
     });
@@ -84,33 +55,11 @@ module.exports.deleteAvatar = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
 
-    if (!user.avatar?.public_id) {
-      return res.status(400).json({
-        message: "No avatar to delete",
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
       });
     }
-
-    await deleteFromCloudinary(user.avatar.public_id);
-
-    user.avatar = undefined;
-    await user.save();
-
-    res.json({
-      message: "Avatar deleted successfully",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @desc    Delete avatar
- * @route   DELETE /api/users/avatar
- * @access  Private
- */
-module.exports.deleteAvatar = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.user._id);
 
     if (!user.avatar?.public_id) {
       return res.status(400).json({
@@ -123,7 +72,7 @@ module.exports.deleteAvatar = async (req, res, next) => {
     user.avatar = undefined;
     await user.save();
 
-    res.json({
+    res.status(200).json({
       message: "Avatar deleted successfully",
     });
   } catch (error) {
@@ -140,16 +89,30 @@ module.exports.updateProfile = async (req, res, next) => {
   try {
     const { name, institution } = req.body;
 
+    if (!name && !institution) {
+      return res.status(400).json({
+        message: "Nothing to update",
+      });
+    }
+
     const user = await User.findById(req.user._id);
 
-    if (name) user.name = name;
-    if (institution) user.institution = institution;
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    if (name) user.name = name.trim();
+    if (institution) user.institution = institution.trim().toLowerCase();
 
     await user.save();
 
-    res.json({
+    const { password, ...safeUser } = user.toObject();
+
+    res.status(200).json({
       message: "Profile updated successfully",
-      user,
+      user: safeUser,
     });
   } catch (error) {
     next(error);
@@ -171,6 +134,13 @@ module.exports.changePassword = async (req, res, next) => {
       });
     }
 
+    if (!validatePassword(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters long and include uppercase, lowercase, number and special character",
+      });
+    }
+
     if (newPassword !== confirmPassword) {
       return res.status(400).json({
         message: "New passwords do not match",
@@ -179,10 +149,23 @@ module.exports.changePassword = async (req, res, next) => {
 
     const user = await User.findById(req.user._id).select("+password");
 
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       return res.status(400).json({
         message: "Current password is incorrect",
+      });
+    }
+
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: "New password must be different from current password",
       });
     }
 
@@ -191,8 +174,54 @@ module.exports.changePassword = async (req, res, next) => {
 
     await user.save();
 
-    res.json({
+    res.status(200).json({
       message: "Password changed successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete user account permanently
+ * @route   DELETE /api/users/account
+ * @access  Private
+ */
+module.exports.deleteAccount = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        message: "Password is required to delete account",
+      });
+    }
+
+    const user = await User.findById(req.user._id).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Incorrect password",
+      });
+    }
+
+    //Correct & safest
+    await deleteUserAccount(req.user._id);
+
+    res.cookie("token", "", {
+      httpOnly: true,
+      expires: new Date(0),
+    });
+
+    res.status(200).json({
+      message: "Account deleted successfully",
     });
   } catch (error) {
     next(error);

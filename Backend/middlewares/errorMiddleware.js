@@ -1,14 +1,21 @@
 const multer = require("multer");
+const logger = require("../utils/logger");
 
 const errorMiddleware = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
+    logger.warn("Multer error", { message: err.message });
+
     return res.status(400).json({
       success: false,
       message: err.message || "Too many files uploaded",
     });
   }
 
-  console.error(err);
+  logger.error(err.message, {
+    stack: err.stack,
+    path: req.originalUrl,
+    method: req.method,
+  });
 
   const statusCode =
     res.statusCode && res.statusCode !== 200 ? res.statusCode : 500;

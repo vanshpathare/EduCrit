@@ -1,9 +1,9 @@
-const dotenv = require("dotenv");
-dotenv.config();
-
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const helmet = require("helmet");
 
 const connectDb = require("./config/db");
 
@@ -15,9 +15,20 @@ const userRoutes = require("./routes/userRoutes");
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
-connectDb();
-
 const app = express();
+
+// Secure HTTP headers
+app.use(helmet());
+
+// Prevent NoSQL Injection
+app.use(
+  mongoSanitize({
+    replaceWith: "_", // replaces $ and . with _
+  })
+);
+
+// Prevent XSS attacks
+app.use(xss());
 
 /**
  * GLOBAL MIDDLEWARES
@@ -27,7 +38,7 @@ const app = express();
 app.use(cookieParser());
 
 // Parse JSON & form data
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS (for frontend)

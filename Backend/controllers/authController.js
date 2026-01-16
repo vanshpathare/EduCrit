@@ -7,14 +7,20 @@ const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
 const validatePassword = require("../utils/validatePassword");
 
-module.exports.register = async (req, res) => {
-  const { name, email, password, institution } = req.body;
+module.exports.register = async (req, res, next) => {
+  const { name, email, password, institution, termsAccepted } = req.body;
 
   try {
     // basic validation hai
     if (!name || !email || !password || !institution) {
       return res.status(400).json({
         message: "All fields are required",
+      });
+    }
+
+    if (!termsAccepted) {
+      return res.status(400).json({
+        message: "You must accept Terms & Privacy Policy",
       });
     }
 
@@ -72,11 +78,7 @@ module.exports.register = async (req, res) => {
       message: "Registered successfully. Please verify your email.",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Something went wrong",
-      error,
-    });
+    next(error);
   }
 };
 
@@ -85,7 +87,7 @@ module.exports.login = async function (req, res, next) {
   try {
     if (!email || !password) {
       return res.status(400).json({
-        message: "All feilds are required",
+        message: "All fields are required",
       });
     }
 
@@ -115,7 +117,7 @@ module.exports.login = async function (req, res, next) {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, // must be false for localhost
+      secure: process.env.COOKIE_SECURE === "true", // must be false for localhost
       sameSite: "lax",
       maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
     });
@@ -152,7 +154,7 @@ module.exports.profile = (req, res) => {
   });
 };
 
-module.exports.forgotPassword = async (req, res) => {
+module.exports.forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
 
@@ -191,13 +193,12 @@ module.exports.forgotPassword = async (req, res) => {
       message: "If the email exists, an OTP has been sent",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    next(error);
   }
 };
 
 // for OTP verification & Reset Password
-module.exports.resetPassword = async (req, res) => {
+module.exports.resetPassword = async (req, res, next) => {
   try {
     const { email, otp, newPassword, confirmPassword } = req.body;
 
@@ -246,12 +247,11 @@ module.exports.resetPassword = async (req, res) => {
       message: "Password reset successful. You can now login.",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Something went wrong" });
+    next(error);
   }
 };
 
-module.exports.resendVerificationOTP = async (req, res) => {
+module.exports.resendVerificationOTP = async (req, res, next) => {
   try {
     const { email } = req.body;
 
@@ -299,14 +299,11 @@ module.exports.resendVerificationOTP = async (req, res) => {
       message: "Verification OTP resent successfully",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Something went wrong",
-    });
+    next(error);
   }
 };
 
-module.exports.verifyEmail = async (req, res) => {
+module.exports.verifyEmail = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
 
@@ -353,9 +350,6 @@ module.exports.verifyEmail = async (req, res) => {
       message: "Email verified successfully. You can now login.",
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Something went wrong",
-    });
+    next(error);
   }
 };
