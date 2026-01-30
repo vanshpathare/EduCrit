@@ -5,6 +5,10 @@ yarn-error.log*
 
 # Env files
 .env
+.env.development
+.env.production
+logs/
+
 
 # Build output
 dist/
