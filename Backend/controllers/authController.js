@@ -8,7 +8,8 @@ const crypto = require("crypto");
 const validatePassword = require("../utils/validatePassword");
 
 module.exports.register = async (req, res, next) => {
-  const { name, email, password, institution, termsAccepted } = req.body;
+  const { name, password, institution, termsAccepted } = req.body;
+  const email = req.body.email?.toLowerCase().trim();
 
   try {
     // basic validation hai
@@ -20,7 +21,7 @@ module.exports.register = async (req, res, next) => {
 
     if (!termsAccepted) {
       return res.status(400).json({
-        message: "You must accept Terms & Privacy Policy",
+        message: "You must accept Terms & Privacy Policy before moving forward",
       });
     }
 
@@ -54,6 +55,8 @@ module.exports.register = async (req, res, next) => {
       email,
       password: hashedPassword,
       institution,
+      termsAccepted: true,
+      termsAcceptedAt: Date.now(),
       isVerified: false,
       emailVerificationOTP: hashedOtp,
       emailVerificationOTPExpiry: Date.now() + 10 * 60 * 1000,
@@ -68,15 +71,27 @@ module.exports.register = async (req, res, next) => {
     //   maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days
     // });
 
-    await sendEmail({
-      to: user.email,
-      subject: "Verify your EduCrit account",
-      text: `Your verification OTP is ${otp}. It will expire in 10 minutes.`,
-    });
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: "Verify your Educrit account",
+        text: `Your verification OTP is ${otp}. It will expire in 10 minutes.`,
+      });
 
-    res.status(201).json({
-      message: "Registered successfully. Please verify your email.",
-    });
+      // Only send success if email worked
+      res.status(201).json({
+        message: "Registered successfully. Please verify your email.",
+      });
+    } catch (emailError) {
+      // IF EMAIL FAILS: Delete the user we just created so they can try again
+      await User.findByIdAndDelete(user._id);
+
+      return res.status(500).json({
+        message: "Failed to send verification email. Please try again.",
+        error: emailError.message,
+      });
+    }
+    // ---------------------------------------
   } catch (error) {
     next(error);
   }

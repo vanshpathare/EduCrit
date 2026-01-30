@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/uploadMiddleware");
+const itemController = require("../controllers/itemController");
 
 const {
   createItem,
@@ -35,7 +36,7 @@ router.post(
   generalLimiter,
   authMiddleware,
   upload.array("images", 4), // max 4 images
-  createItem
+  createItem,
 );
 
 /**
@@ -46,7 +47,12 @@ router.post(
 router.get("/:id", getItemById);
 
 // Update item
-router.put("/:id", authMiddleware, updateItem);
+router.put(
+  "/:id",
+  authMiddleware,
+  upload.array("images", 4),
+  itemController.updateItem,
+);
 
 // Delete item
 router.delete("/:id", authMiddleware, deleteItem);
@@ -56,7 +62,7 @@ router.put(
   "/:id/images",
   authMiddleware,
   upload.array("images", 4),
-  updateItemImages
+  updateItemImages,
 );
 
 module.exports = router;

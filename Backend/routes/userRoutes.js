@@ -9,6 +9,7 @@ const {
   updateProfile,
   changePassword,
   deleteAccount,
+  updateWhatsapp,
 } = require("../controllers/userController");
 const { accountDeleteLimiter } = require("../middlewares/rateLimiter");
 
@@ -20,12 +21,13 @@ router.put(
     next();
   },
   upload.single("avatar"),
-  updateAvatar
+  updateAvatar,
 );
 
 router.put("/profile", authMiddleware, updateProfile);
 router.put("/change-password", authMiddleware, changePassword);
 router.delete("/avatar", authMiddleware, deleteAvatar);
 router.delete("/account", authMiddleware, accountDeleteLimiter, deleteAccount);
+router.put("/whatsapp", authMiddleware, updateWhatsapp);
 
 module.exports = router;

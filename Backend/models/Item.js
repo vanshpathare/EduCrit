@@ -20,6 +20,12 @@ const itemSchema = new mongoose.Schema(
       trim: true,
     },
 
+    videoLink: {
+      type: String,
+      trim: true,
+      required: false, // Optional
+    },
+
     // SELL OPTION
     sell: {
       enabled: {
@@ -69,8 +75,14 @@ const itemSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    institution: {
+      type: String,
+      required: true,
+      trim: true,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 🔐 Ensure at least one option is enabled

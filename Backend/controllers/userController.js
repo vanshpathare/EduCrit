@@ -227,3 +227,42 @@ module.exports.deleteAccount = async (req, res, next) => {
     next(error);
   }
 };
+
+module.exports.updateWhatsapp = async (req, res, next) => {
+  try {
+    const { whatsapp } = req.body;
+
+    // 1. Basic Validation
+    if (!whatsapp) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    // Ensure it's a clean 10-digit number
+    const cleanNumber = whatsapp.replace(/\D/g, ""); // Remove non-digits
+
+    if (cleanNumber.length !== 10) {
+      return res
+        .status(400)
+        .json({ message: "Please enter a valid 10-digit number" });
+    }
+
+    // 2. Update User in Database
+    const user = await User.findByIdAndUpdate(
+      req.user._id, // This comes from authMiddleware
+      {
+        whatsapp: {
+          number: cleanNumber,
+          isVerified: false, // Default to false until you manually verify them
+        },
+      },
+      { new: true }, // Return the updated user
+    );
+
+    res.status(200).json({
+      message: "Contact number updated successfully",
+      whatsapp: user.whatsapp,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

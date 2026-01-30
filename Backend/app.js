@@ -5,7 +5,7 @@ const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
 const helmet = require("helmet");
 
-const connectDb = require("./config/db");
+// const connectDb = require("./config/db");
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -18,14 +18,47 @@ const errorMiddleware = require("./middlewares/errorMiddleware");
 const app = express();
 
 // Secure HTTP headers
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  }),
+);
+
+// Enable CORS (for frontend)
+app.use(
+  cors({
+    origin: "http://localhost:5173", // React frontend
+    credentials: true, // allow cookies
+  }),
+);
+
+// Parse JSON & form data
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true }));
+
+// Parse cookies
+app.use(cookieParser());
+
+app.use((req, res, next) => {
+  // Makes req.query writable so mongoSanitize doesn't crash
+  Object.defineProperty(req, "query", {
+    value: req.query,
+    writable: true,
+    configurable: true,
+    enumerable: true,
+  });
+  next();
+});
 
 // Prevent NoSQL Injection
 app.use(
   mongoSanitize({
     replaceWith: "_", // replaces $ and . with _
-  })
+    sanitizeQuery: false,
+  }),
 );
+
+//app.options("/*", cors());
 
 // Prevent XSS attacks
 app.use(xss());
@@ -33,21 +66,6 @@ app.use(xss());
 /**
  * GLOBAL MIDDLEWARES
  */
-
-// Parse cookies
-app.use(cookieParser());
-
-// Parse JSON & form data
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true }));
-
-// Enable CORS (for frontend)
-app.use(
-  cors({
-    origin: "http://localhost:5173", // React frontend
-    credentials: true, // allow cookies
-  })
-);
 
 /**
  * ROUTES

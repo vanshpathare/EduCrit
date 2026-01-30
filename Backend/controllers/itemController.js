@@ -1,5 +1,6 @@
 const Item = require("../models/Item");
 const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
+const mongoose = require("mongoose");
 const allowedCategories = [
   "books",
   "hardware-projects",
@@ -18,7 +19,7 @@ const allowedCategories = [
  */
 module.exports.createItem = async (req, res, next) => {
   try {
-    const { title, description, category, sell, rent } = req.body;
+    const { title, description, category, sell, rent, videoLink } = req.body;
 
     if (!title || !description || !category) {
       return res.status(400).json({
@@ -88,7 +89,9 @@ module.exports.createItem = async (req, res, next) => {
       sell: sellData,
       rent: rentData,
       images: imageData,
+      videoLink: videoLink || null,
       owner: req.user._id,
+      institution: req.user.institution,
     });
 
     res.status(201).json({
@@ -118,6 +121,10 @@ module.exports.getAllItems = async (req, res, next) => {
         return res.status(400).json({ message: "Invalid category filter" });
       }
       filter.category = req.query.category;
+    }
+
+    if (req.query.institution) {
+      filter.institution = req.query.institution;
     }
 
     if (req.query.sell === "true") filter["sell.enabled"] = true;
@@ -150,15 +157,20 @@ module.exports.getAllItems = async (req, res, next) => {
  */
 module.exports.getItemById = async (req, res, next) => {
   try {
+    // ✅ Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({ message: "Item not found" });
+    }
+
     const item = await Item.findById(req.params.id)
-      .populate("owner", "name institution")
+      .populate("owner", "name institution email whatsapp")
       .lean();
 
     if (!item || !item.isAvailable) {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    res.json(item);
+    res.status(200).json(item);
   } catch (error) {
     next(error);
   }
@@ -187,7 +199,14 @@ module.exports.updateItem = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    const allowedFields = ["title", "description", "category", "sell", "rent"];
+    const allowedFields = [
+      "title",
+      "description",
+      "category",
+      "sell",
+      "rent",
+      "videoLink",
+    ];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
@@ -228,6 +247,8 @@ module.exports.updateItem = async (req, res, next) => {
             });
           }
           item[field] = req.body[field];
+        } else {
+          item[field] = req.body[field];
         }
       }
     }
@@ -238,14 +259,57 @@ module.exports.updateItem = async (req, res, next) => {
     //   });
     // }
 
-    const hasValidUpdate = allowedFields.some(
-      (field) => req.body[field] !== undefined
-    );
+    const hasValidUpdate =
+      allowedFields.some((field) => req.body[field] !== undefined) ||
+      (req.files && req.files.length > 0) ||
+      req.body.imagesToDelete;
 
     if (!hasValidUpdate) {
       return res.status(400).json({
         message: "At least one valid field must be updated",
       });
+    }
+
+    if (req.body.imagesToDelete) {
+      let idsToDelete;
+      try {
+        idsToDelete = JSON.parse(req.body.imagesToDelete);
+      } catch {
+        return res.status(400).json({
+          message: "Invalid imagesToDelete format",
+        });
+      }
+
+      for (const id of idsToDelete) {
+        await deleteFromCloudinary(id);
+      }
+
+      item.images = item.images.filter(
+        (img) => !idsToDelete.includes(img.public_id),
+      );
+    }
+
+    //handling new images if any
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map((file) => ({
+        url: file.path,
+        public_id: file.filename,
+      }));
+
+      //checking total limit
+      if (item.images.length + newImages.length > 4) {
+        return res.status(400).json({
+          message: "Maximum 4 images allowed per item",
+        });
+      }
+
+      item.images.push(...newImages);
+
+      if (item.images.length === 0) {
+        return res.status(400).json({
+          message: "At least one image is required",
+        });
+      }
     }
 
     const updatedItem = await item.save();
