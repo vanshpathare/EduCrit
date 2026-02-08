@@ -1,9 +1,9 @@
 import api from "./axios";
 
-export const updateProfile = (data) => api.put("/api/users/profile", data);
+export const updateProfile = (data) => api.put("/users/profile", data);
 
 export const updateAvatar = (formData) => {
-  return api.put("/api/users/avatar", formData, {
+  return api.put("/users/avatar", formData, {
     headers: {
       "Content-Type": "multipart/form-data", // We explicitly allow this
       // Important: We do NOT set the boundary manually; browser does it.
@@ -12,10 +12,8 @@ export const updateAvatar = (formData) => {
   });
 };
 
-export const deleteAvatar = () => api.delete("/api/users/avatar");
+export const deleteAvatar = () => api.delete("/users/avatar");
 
-export const changePassword = (data) =>
-  api.put("/api/users/change-password", data);
+export const changePassword = (data) => api.put("/users/change-password", data);
 
-export const deleteAccount = (data) =>
-  api.delete("/api/users/account", { data });
+export const deleteAccount = (data) => api.delete("/users/account", { data });
