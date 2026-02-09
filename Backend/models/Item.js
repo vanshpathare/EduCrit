@@ -48,7 +48,7 @@ const itemSchema = new mongoose.Schema(
       },
       period: {
         type: String,
-        enum: ["day", "week", "month"],
+        enum: ["hour", "day", "week", "month"],
       },
     },
 

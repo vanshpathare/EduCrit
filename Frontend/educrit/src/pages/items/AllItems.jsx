@@ -25,6 +25,8 @@ const AllItems = () => {
   const institution = searchParams.get("institution") || "";
   const sell = searchParams.get("sell") === "true";
   const rent = searchParams.get("rent") === "true";
+  const minPrice = searchParams.get("minPrice") || "";
+  const maxPrice = searchParams.get("maxPrice") || "";
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,9 @@ const AllItems = () => {
       if (sell) params.sell = true;
       if (rent) params.rent = true;
 
+      if (minPrice) params.minPrice = minPrice;
+      if (maxPrice) params.maxPrice = maxPrice;
+
       const data = await getAllItems(params);
       setItems(data.items || []);
     } catch {
@@ -61,7 +66,7 @@ const AllItems = () => {
 
   useEffect(() => {
     fetchItems();
-  }, [category, institution, sell, rent]);
+  }, [category, institution, sell, rent, minPrice, maxPrice]);
 
   /* ---------------- FILTER HELPERS ---------------- */
   const updateFilters = (updates) => {
@@ -193,6 +198,50 @@ const AllItems = () => {
                       d="M19 9l-7 7-7-7"
                     ></path>
                   </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <div className="relative w-full lg:w-32">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                  Min Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-400 text-sm">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={minPrice}
+                    onChange={(e) =>
+                      updateFilters({ minPrice: e.target.value })
+                    }
+                    className="block w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              <span className="text-gray-300 mt-6 hidden sm:block">—</span>
+
+              <div className="relative w-full lg:w-32">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                  Max Price
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-gray-400 text-sm">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={maxPrice}
+                    onChange={(e) =>
+                      updateFilters({ maxPrice: e.target.value })
+                    }
+                    className="block w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  />
                 </div>
               </div>
             </div>

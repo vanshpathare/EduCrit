@@ -144,6 +144,22 @@ module.exports.getAllItems = async (req, res, next) => {
     if (req.query.sell === "true") filter["sell.enabled"] = true;
     if (req.query.rent === "true") filter["rent.enabled"] = true;
 
+    const min = Number(req.query.minPrice);
+    const max = Number(req.query.maxPrice);
+
+    if (!isNaN(min) || !isNaN(max)) {
+      const priceQuery = {};
+      if (!isNaN(min)) priceQuery.$gte = min;
+      if (!isNaN(max)) priceQuery.$lte = max;
+
+      // This logic finds items where EITHER the sell price OR the rent price
+      // falls within the user's specified range.
+      filter.$or = [
+        { "sell.enabled": true, "sell.price": priceQuery },
+        { "rent.enabled": true, "rent.price": priceQuery },
+      ];
+    }
+
     const items = await Item.find(filter)
       .populate("owner", "name institution")
       .sort({ createdAt: -1 })

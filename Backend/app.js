@@ -175,7 +175,7 @@ app.get("/items/:id", async (req, res) => {
               /__META_DESCRIPTION__/g,
               "Academic Exchange Marketplace for Students",
             )
-            .replace(/__META_IMAGE__/g, "https://educrit.in/logo.png") // Ensure you have a logo.png in public folder
+            .replace(/__META_IMAGE__/g, "https://educrit.in/logo-new.png")
             .replace(/__META_URL__/g, "https://educrit.in"),
         );
       }
@@ -248,12 +248,12 @@ if (process.env.NODE_ENV === "production") {
 
       // Use a function to avoid issues with double-slashes or unexpected characters
       const defaultHtml = htmlData
-        .replace(/__META_TITLE__/g, "EduCrit.in - Student Marketplace")
+        .replace(/__META_TITLE__/g, "EduCrit - Student Marketplace")
         .replace(
           /__META_DESCRIPTION__/g,
-          "Buy, Sell, and Rent academic resources on EduCrit.in",
+          "Buy, Sell, and Rent academic resources on EduCrit",
         )
-        .replace(/__META_IMAGE__/g, "https://educrit.in/logo.png")
+        .replace(/__META_IMAGE__/g, "https://educrit.in/logo-new.png")
         .replace(/__META_URL__/g, "https://educrit.in");
 
       res.set("Content-Type", "text/html");

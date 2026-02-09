@@ -951,6 +951,7 @@ const AddItem = () => {
                           className="block w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                           required
                         >
+                          <option value="hour">Per Hour</option>
                           <option value="day">Per Day</option>
                           <option value="week">Per Week</option>
                           <option value="month">Per Month</option>
