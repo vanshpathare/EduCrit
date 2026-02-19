@@ -12,7 +12,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import ListYourItem from "./pages/ListYourItem";
 import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/ResetPassword";
+import ResetPassword from "./pages/auth/resetPassword";
 
 /* Auth pages */
 import Login from "./pages/auth/Login";
@@ -28,6 +28,8 @@ import MyListings from "./pages/items/MyListings";
 
 /* Profile */
 import Profile from "./pages/profile/Profile";
+
+import History from "./pages/history/History";
 
 /* Route protection */
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -67,6 +69,7 @@ function App() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/add-item" element={<AddItem />} />
             <Route path="/my-listings" element={<MyListings />} />
+            <Route path="/history" element={<History />} />
             <Route path="/items/:id/edit" element={<EditItem />} />
           </Route>
         </Route>

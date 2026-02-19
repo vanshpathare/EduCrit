@@ -89,13 +89,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import api from "../../api/axios";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import AvatarUpload from "../../components/profile/AvatarUpload";
 import ProfileForm from "../../components/profile/ProfileForm";
 import Loader from "../../components/common/Loader";
 
 const Profile = () => {
-  const { user, loading, setUser } = useAuth();
+  const { user, loading, setUser, logout } = useAuth();
+  const navigate = useNavigate();
   const [whatsapp, setWhatsapp] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -104,7 +106,10 @@ const Profile = () => {
 
   useEffect(() => {
     if (user?.whatsapp?.number) {
-      setWhatsapp(user.whatsapp.number);
+      const cleanNumber = user.whatsapp.number.startsWith("91")
+        ? user.whatsapp.number.slice(2)
+        : user.whatsapp.number;
+      setWhatsapp(cleanNumber);
     }
   }, [user]);
 
@@ -117,7 +122,7 @@ const Profile = () => {
     setSaving(true);
     try {
       const fullNumber = `91${whatsapp}`;
-      const { data } = await api.put("/api/users/whatsapp", {
+      const { data } = await api.put("/users/whatsapp", {
         whatsapp: fullNumber,
       });
 
@@ -148,6 +153,24 @@ const Profile = () => {
 
     const url = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
+  };
+
+  const handleDeleteAccount = async () => {
+    const password = prompt(
+      "Type your password to confirm account deactivation:",
+    );
+    if (!password) return;
+
+    try {
+      const { data } = await api.delete("/auth/delete-account", {
+        data: { password },
+      });
+      toast.success(data.message);
+      logout(); // This clears your local user state
+      navigate("/login");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Deactivation failed");
+    }
   };
 
   if (loading) return <Loader />;
@@ -242,6 +265,20 @@ const Profile = () => {
             )}
           </>
         )}
+      </div>
+
+      <div className="bg-red-50 border border-red-100 rounded-xl p-6 mt-12">
+        <h2 className="text-lg font-bold text-red-800 mb-1">Danger Zone</h2>
+        <p className="text-sm text-red-600 mb-4">
+          Deactivating your account will hide all your listings from the
+          marketplace. You can restore your account anytime by logging back in.
+        </p>
+        <button
+          onClick={handleDeleteAccount}
+          className="bg-white border border-red-200 text-red-600 px-4 py-2 rounded-lg font-semibold hover:bg-red-600 hover:text-white transition-all shadow-sm"
+        >
+          Deactivate My Account
+        </button>
       </div>
     </div>
   );

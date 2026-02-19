@@ -42,7 +42,7 @@ const LatestListingsRow = ({ items }) => {
               h-full
             "
           >
-            <ItemCard item={item} />
+            <ItemCard item={item} variant="grid" />
           </div>
         ))}
 

@@ -50,6 +50,11 @@ const itemSchema = new mongoose.Schema(
         type: String,
         enum: ["hour", "day", "week", "month"],
       },
+      deposit: {
+        type: String,
+        trim: true,
+        default: "None",
+      },
     },
 
     images: [

@@ -22,7 +22,7 @@ const EditItem = () => {
     institute: "",
     videoLink: "",
     sell: { enabled: false, price: "" },
-    rent: { enabled: false, price: "", period: "day" },
+    rent: { enabled: false, price: "", period: "day", deposit: "" },
   });
 
   // Image
@@ -51,9 +51,14 @@ const EditItem = () => {
           description: item.description,
           category: item.category,
           videoLink: item.videoLink || "",
-          institute: item.institution || "",
+          institute: user?.institution || item.institution || "",
           sell: item.sell || { enabled: false, price: "" },
-          rent: item.rent || { enabled: false, price: "", period: "day" },
+          rent: {
+            enabled: item.rent?.enabled || false,
+            price: item.rent?.price || "",
+            period: item.rent?.period || "day",
+            deposit: item.rent?.deposit || "",
+          },
         });
         setExistingImages(item.images || []);
       } catch {
@@ -242,6 +247,7 @@ const EditItem = () => {
                     className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-3 uppercase"
                     placeholder="Search or type your college full name..."
                     required
+                    readOnly
                   />
                   <datalist id="institute-options">
                     {instituteList.map((item, index) => {
@@ -508,6 +514,7 @@ const EditItem = () => {
                           }
                           className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 text-sm border p-2 bg-white"
                         >
+                          <option value="hour">Per Hour</option>
                           <option value="day">Per Day</option>
                           <option value="week">Per Week</option>
                           <option value="month">Per Month</option>

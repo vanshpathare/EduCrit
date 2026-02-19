@@ -1,39 +1,26 @@
 const User = require("../models/User");
 const Item = require("../models/Item");
-const deleteFromCloudinary = require("../utils/deleteFromCloudinary");
 
 /**
- * HARD DELETE user account
- * - Deletes user avatar
- * - Deletes all item images
- * - Deletes all items
- * - Deletes user
+ * SOFT DELETE user account
+ * - Marks user as inactive
+ * - Hides all items from marketplace
+ * - Preserves transaction history for safety
  */
 const deleteUserAccount = async (userId) => {
-  // Find user
+  // 1. Find user
   const user = await User.findById(userId);
   if (!user) return;
 
-  // Delete user avatar
-  if (user.avatar?.public_id) {
-    await deleteFromCloudinary(user.avatar.public_id);
-  }
+  // 2. Mark User as inactive (Soft Delete)
+  user.isActive = false;
+  user.deletedAt = new Date();
+  await user.save();
 
-  // Find user's items
-  const items = await Item.find({ owner: userId });
-
-  // Delete all item images
-  for (const item of items) {
-    for (const image of item.images) {
-      await deleteFromCloudinary(image.public_id);
-    }
-  }
-
-  // Delete all items
-  await Item.deleteMany({ owner: userId });
-
-  // Delete user
-  await User.deleteOne({ _id: userId });
+  // 3. Hide all user's items from the public marketplace
+  // We do NOT delete images from Cloudinary here because
+  // they might be needed for Order History records.
+  await Item.updateMany({ owner: userId }, { isAvailable: false });
 };
 
 module.exports = {

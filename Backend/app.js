@@ -12,6 +12,7 @@ const authRoutes = require("./routes/authRoutes");
 const itemRoutes = require("./routes/itemRoutes");
 const userRoutes = require("./routes/userRoutes");
 const instituteRoutes = require("./routes/instituteRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
@@ -119,6 +120,8 @@ app.use("/api/items", itemRoutes);
 // User routes (avatar, profile, etc.)
 app.use("/api/users", userRoutes);
 
+app.use("/api/orders", orderRoutes);
+
 // Test route
 // app.get("/", (req, res) => {
 //   res.send("hey from server");
@@ -126,15 +129,15 @@ app.use("/api/users", userRoutes);
 
 app.use("/api/institutes", instituteRoutes);
 
-app.post("/api/auth/forgot-password", (req, res) => {
-  res.status(200).json({ message: "TEST SUCCESS: App.js is receiving this!" });
-});
+// app.post("/api/auth/forgot-password", (req, res) => {
+//   res.status(200).json({ message: "TEST SUCCESS: App.js is receiving this!" });
+// });
 
-app.post("/api/auth/reset-password", (req, res) => {
-  res
-    .status(200)
-    .json({ message: "TEST SUCCESS: Reset route is receiving this!" });
-});
+// app.post("/api/auth/reset-password", (req, res) => {
+//   res
+//     .status(200)
+//     .json({ message: "TEST SUCCESS: Reset route is receiving this!" });
+// });
 
 const mode = process.env.NODE_ENV || "development";
 console.log(`System running in ${mode} mode.`);

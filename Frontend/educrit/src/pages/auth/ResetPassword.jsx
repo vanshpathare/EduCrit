@@ -19,7 +19,7 @@ const ResetPassword = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const { data } = await api.post("/api/auth/reset-password", formData);
+      const { data } = await api.post("/auth/reset-password", formData);
       toast.success(data.message);
       navigate("/login");
     } catch (error) {

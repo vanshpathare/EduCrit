@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom"; // 1. Import useNavigate
 import { getItemById } from "../../api/items.api";
+import { createOrder } from "../../api/orders.api";
 import Loader from "../../components/common/Loader";
 import ItemImages from "../../components/items/ItemImages";
 import toast from "react-hot-toast";
@@ -22,6 +23,10 @@ const ItemDetails = () => {
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [showModal, setShowModal] = useState(false);
+  const [selectedType, setSelectedType] = useState(null); // 'sale' or 'rent'
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const fetchItem = async () => {
@@ -62,9 +67,32 @@ const ItemDetails = () => {
     if (!checkLogin()) return; // 🛑 Stop if not logged in
 
     const message = encodeURIComponent(
-      `Hi, I'm interested in your item: "${title}" listed on EduCrit.`,
+      `Hi, I'm interested in your item: "${title}" listed on EduCrit. Can we discuss the meetup and negotiations? I'll confirm on the app once we agree so we can get our security OTPs! 🤝`,
     );
     window.open(`https://wa.me/${number}?text=${message}`, "_blank");
+  };
+
+  /* CONFIRM TRANSACTION HANDLER */
+  const handleConfirmOrder = async () => {
+    try {
+      setIsProcessing(true);
+      const orderData = {
+        itemId: item._id,
+        type: selectedType,
+        amount: selectedType === "rent" ? item.rent.price : item.sell.price,
+      };
+
+      await createOrder(orderData);
+      toast.success(
+        "Order initiated! Pickup OTP sent to email 📧. Head to History page to manage the deal",
+      );
+      setShowModal(false);
+      navigate("/history", { state: { newOrder: true } }); // Redirect to history to see the code
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to start transaction");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   // Add this helper function inside your component
@@ -216,9 +244,42 @@ const ItemDetails = () => {
                       / {rent.period}
                     </span>
                   </p>
+
+                  <div className="mt-3 pt-3 border-t border-purple-100">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">
+                        Security Deposit / Collateral
+                      </span>
+                      <p className="text-sm font-semibold text-gray-800 mt-0.5">
+                        {rent.deposit || "No deposit required"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
+
+            {rent?.enabled && (
+              <div className="flex items-start gap-2 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                <svg
+                  className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-[11px] text-purple-700 leading-tight">
+                  <strong>Note:</strong> Collateral is refundable upon returning
+                  item in original condition.
+                </p>
+              </div>
+            )}
 
             {videoLink && (
               <a
@@ -313,9 +374,102 @@ const ItemDetails = () => {
                 </button>
               </div>
             </div>
+
+            <div className="p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl border border-gray-200 shadow-inner">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">
+                Step 2: Finalize Handshake
+              </h3>
+              <div className="flex flex-col gap-3">
+                {rent?.enabled && (
+                  <button
+                    onClick={() => {
+                      if (checkLogin()) {
+                        setSelectedType("rent");
+                        setShowModal(true);
+                      }
+                    }}
+                    className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95"
+                  >
+                    Rent Now & Get OTP
+                  </button>
+                )}
+                {sell?.enabled && (
+                  <button
+                    onClick={() => {
+                      if (checkLogin()) {
+                        setSelectedType("sale");
+                        setShowModal(true);
+                      }
+                    }}
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 active:scale-95"
+                  >
+                    Buy Now & Get OTP
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 text-center mt-3 leading-tight italic">
+                * Only confirm after you've finalized the meetup on WhatsApp.
+              </p>
+            </div>
           </div>
         </div>
       </div>
+
+      {showModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in duration-200">
+            <div className="text-center">
+              <div
+                className={`mx-auto flex items-center justify-center h-14 w-14 rounded-full mb-4 ${selectedType === "rent" ? "bg-purple-100" : "bg-blue-100"}`}
+              >
+                <span className="text-2xl">
+                  {selectedType === "rent" ? "🕒" : "💰"}
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Confirm Request?
+              </h3>
+              <p className="text-sm text-gray-500 mt-2">
+                Initiating transaction for{" "}
+                <span className="font-semibold text-gray-800">"{title}"</span>.
+              </p>
+            </div>
+            <div className="mt-6 p-4 bg-gray-50 rounded-2xl space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Price:</span>
+                <span className="font-bold text-gray-900">
+                  ₹{selectedType === "rent" ? rent.price : sell.price}
+                </span>
+              </div>
+              {selectedType === "rent" && (
+                <div className="pt-2 border-t border-gray-200">
+                  <span className="text-[10px] font-bold text-purple-600 uppercase">
+                    Deposit Required:
+                  </span>
+                  <p className="text-sm font-semibold text-gray-800">
+                    {rent.deposit || "None"}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                disabled={isProcessing}
+                onClick={handleConfirmOrder}
+                className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all ${selectedType === "rent" ? "bg-purple-600" : "bg-blue-600"} disabled:opacity-50`}
+              >
+                {isProcessing ? "Processing..." : "Confirm & Get OTP"}
+              </button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="w-full py-3 text-sm font-medium text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

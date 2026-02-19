@@ -452,63 +452,24 @@ const AddItem = () => {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(false);
-  const [instituteList, setInstituteList] = useState([]); // Search results
 
   const [form, setForm] = useState({
     title: "",
     description: "",
     category: "books",
-    institute: "",
+    institute: user?.institution || "",
     videoLink: "",
     sellEnabled: false,
     sellPrice: "",
     rentEnabled: false,
     rentPrice: "",
     rentPeriod: "day",
+    rentDeposit: "",
   });
 
   const [images, setImages] = useState([]);
 
   /* ------------------ handlers ------------------ */
-
-  // ✅ 1. Search Logic (Typing)
-  const handleInstituteChange = async (e) => {
-    const userInput = e.target.value.toUpperCase();
-
-    // Update form immediately
-    setForm((prev) => ({ ...prev, institute: userInput }));
-
-    // Optimization: Don't search if too short
-    if (userInput.length < 2) {
-      setInstituteList([]);
-      return;
-    }
-
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/api/institutes/search?query=${userInput}`,
-      );
-      setInstituteList(data);
-    } catch (error) {
-      console.error("Search error", error);
-    }
-  };
-
-  // ✅ 2. Focus Logic (Clicking)
-  const handleInstituteFocus = async () => {
-    if (instituteList.length > 0) return; // Don't refetch if list exists
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/api/institutes/search?query=A`,
-      );
-      setInstituteList(data);
-    } catch (error) {
-      console.error("Focus error", error);
-    }
-  };
-
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({
@@ -583,6 +544,15 @@ const AddItem = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    //Must have an institution
+    if (!form.institute) {
+      toast.error(
+        "Please add your Institution to your profile before listing.",
+      );
+      navigate("/profile");
+      return;
+    }
+
     if (!form.title || !form.description || images.length === 0) {
       toast.error("Please fill all required fields");
       return;
@@ -614,6 +584,7 @@ const AddItem = () => {
         enabled: form.rentEnabled,
         price: form.rentEnabled ? Number(form.rentPrice) : undefined,
         period: form.rentEnabled ? form.rentPeriod : undefined,
+        deposit: form.rentEnabled ? form.rentDeposit : undefined,
       }),
     );
     images.forEach((img) => formData.append("images", img));
@@ -712,31 +683,20 @@ const AddItem = () => {
 
                 {/* ✅ UPDATED INSTITUTE FIELD */}
                 <div className="sm:col-span-6">
-                  <label className="block text-sm font-bold text-gray-700 mb-1">
-                    Institute / College
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+                    Listing To Institution
                   </label>
-                  <input
-                    list="institute-options"
-                    type="text"
-                    name="institute"
-                    value={form.institute}
-                    onChange={handleInstituteChange} // 👈 Search Trigger
-                    onFocus={handleInstituteFocus} // 👈 Focus Trigger
-                    autoComplete="off"
-                    placeholder="Search or type your college name..."
-                    className="block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all uppercase"
-                    required
-                  />
-                  <datalist id="institute-options">
-                    {instituteList.map((item, index) => {
-                      // 🛡️ Handle Objects or Strings safely
-                      const val = typeof item === "object" ? item.name : item;
-                      return <option key={index} value={val} />;
-                    })}
-                  </datalist>
-                  <p className="text-xs text-gray-500 mt-1">
-                    * If your college isn't listed, just type it fully.
-                  </p>
+                  <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 p-4 rounded-xl">
+                    <div>
+                      <p className="text-sm font-bold text-blue-900 uppercase">
+                        {form.institute || "No Institution Set"}
+                      </p>
+                      <p className="text-[10px] text-blue-500 font-medium italic">
+                        * Fetched from your profile. To change this, update your
+                        settings.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="sm:col-span-6">
@@ -956,6 +916,25 @@ const AddItem = () => {
                           <option value="week">Per Week</option>
                           <option value="month">Per Month</option>
                         </select>
+                      </div>
+
+                      <div className="pt-2">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                          Security Deposit / Collateral
+                        </label>
+                        <input
+                          type="text"
+                          name="rentDeposit"
+                          placeholder="e.g. ₹500 or College ID Card"
+                          value={form.rentDeposit}
+                          onChange={handleChange}
+                          className="block w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1 italic">
+                          * This deposit or collateral will be returned to you
+                          once the item is handed back to the owner in its
+                          original condition.
+                        </p>
                       </div>
                     </div>
                   )}

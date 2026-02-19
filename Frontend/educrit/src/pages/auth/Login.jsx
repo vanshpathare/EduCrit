@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
+import api from "../../api/axios";
 
 const Login = () => {
   const { login } = useAuth();
@@ -11,6 +12,7 @@ const Login = () => {
   // Redirect user back to where they came from
   const from = location.state?.from?.pathname || "/";
 
+  const [isDeactivated, setIsDeactivated] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -34,15 +36,33 @@ const Login = () => {
 
     try {
       setLoading(true);
+      setIsDeactivated(false);
       await login(formData);
       toast.success("Logged in successfully");
       navigate(from, { replace: true });
     } catch (error) {
-      console.log("FULL ERROR OBJECT:", error);
-      console.log("RESPONSE DATA:", error.response?.data);
-      const message =
-        error.response?.data?.message || error.message || "Login failed";
-      toast.error(message);
+      const responseData = error.response?.data;
+      if (error.response?.status === 403 && responseData?.isDeactivated) {
+        setIsDeactivated(true); // This makes the yellow box appear
+        toast.error("Account deactivated. Click 'Restore' to reactivate.");
+      } else {
+        const message =
+          responseData?.message || error.message || "Login failed";
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      setLoading(true);
+      const res = await api.post("/auth/reactivate", formData);
+      toast.success(res.data.message || "Account restored! You can now login.");
+      setIsDeactivated(false); // Hide the restore button
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to restore account");
     } finally {
       setLoading(false);
     }
@@ -151,6 +171,22 @@ const Login = () => {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        {isDeactivated && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-700 mb-2 text-center font-medium">
+              It looks like your account was deactivated. Would you like to
+              restore it and your listings?
+            </p>
+            <button
+              type="button"
+              onClick={handleReactivate}
+              className="w-full bg-green-600 text-white py-2 rounded font-bold hover:bg-green-700 transition-colors shadow-md"
+            >
+              {loading ? "Restoring..." : "Restore Account & Listings"}
+            </button>
+          </div>
+        )}
       </form>
 
       <p className="mt-4 text-center">

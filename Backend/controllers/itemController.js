@@ -124,56 +124,83 @@ module.exports.createItem = async (req, res, next) => {
  */
 module.exports.getAllItems = async (req, res, next) => {
   try {
+    const { search, category, institution, sell, rent, minPrice, maxPrice } =
+      req.query;
+
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const filter = { isAvailable: true };
+    const conditions = [{ isAvailable: true }];
 
-    if (req.query.category) {
-      if (!allowedCategories.includes(req.query.category)) {
-        return res.status(400).json({ message: "Invalid category filter" });
-      }
-      filter.category = req.query.category;
+    if (search && search.trim() !== "") {
+      conditions.push({
+        title: { $regex: search.trim(), $options: "i" },
+      });
     }
 
-    if (req.query.institution) {
-      filter.institution = req.query.institution;
+    if (category) {
+      conditions.push({ category });
     }
 
-    if (req.query.sell === "true") filter["sell.enabled"] = true;
-    if (req.query.rent === "true") filter["rent.enabled"] = true;
+    // if (institution) {
+    //   filter.institution = { $regex: institution.trim(), $options: "i" };
+    // }
 
-    const min = Number(req.query.minPrice);
-    const max = Number(req.query.maxPrice);
+    if (institution && institution.trim() !== "") {
+      // 1. Clean the search string and split into words
+      const words = institution.trim().split(/\s+/);
 
+      // 2. Build a query that matches items containing ALL those words
+      // This ignores parentheses and double-space issues
+      const instRegexArray = words.map((word) => ({
+        institution: {
+          $regex: word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), // Escape ( )
+          $options: "i",
+        },
+      }));
+      conditions.push({ $and: instRegexArray });
+    }
+
+    if (sell === "true") conditions.push({ "sell.enabled": true });
+    if (rent === "true") conditions.push({ "rent.enabled": true });
+
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
     if (!isNaN(min) || !isNaN(max)) {
       const priceQuery = {};
       if (!isNaN(min)) priceQuery.$gte = min;
       if (!isNaN(max)) priceQuery.$lte = max;
-
-      // This logic finds items where EITHER the sell price OR the rent price
-      // falls within the user's specified range.
-      filter.$or = [
-        { "sell.enabled": true, "sell.price": priceQuery },
-        { "rent.enabled": true, "rent.price": priceQuery },
-      ];
+      conditions.push({
+        $or: [
+          { "sell.enabled": true, "sell.price": priceQuery },
+          { "rent.enabled": true, "rent.price": priceQuery },
+        ],
+      });
     }
 
-    const items = await Item.find(filter)
+    const finalFilter = { $and: conditions };
+
+    // 1. Fetch items and populate the owner
+    const items = await Item.find(finalFilter)
       .populate("owner", "name institution")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await Item.countDocuments(filter);
+    // 2. 🟢 APPLY THE FILTER (Removes items if the owner's account was hard-deleted)
+    const validItems = items.filter((item) => item.owner !== null);
+
+    // 3. Get total count for pagination
+    const total = await Item.countDocuments(finalFilter);
 
     res.json({
+      success: true,
       page,
       totalPages: Math.ceil(total / limit),
       totalItems: total,
-      items,
+      items: validItems, // 🟢 Return the filtered list
     });
   } catch (error) {
     next(error);

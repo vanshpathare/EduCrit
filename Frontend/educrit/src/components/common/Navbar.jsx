@@ -62,6 +62,9 @@ const Navbar = () => {
                 <NavLink to="/my-listings" className={navLinkStyle}>
                   My Listings
                 </NavLink>
+                <NavLink to="/history" className={navLinkStyle}>
+                  History
+                </NavLink>
                 <NavLink to="/profile" className={navLinkStyle}>
                   Profile
                 </NavLink>
@@ -124,6 +127,20 @@ const Navbar = () => {
                   }
                 >
                   My Listings
+                </NavLink>
+
+                <NavLink
+                  to="/history"
+                  onClick={() => setMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `w-full text-center py-3 rounded-xl font-semibold text-base transition border ${
+                      isActive
+                        ? "bg-blue-50 border-blue-200 text-blue-700"
+                        : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`
+                  }
+                >
+                  History
                 </NavLink>
 
                 <NavLink

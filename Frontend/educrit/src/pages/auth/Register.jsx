@@ -38,7 +38,7 @@ const Register = () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
       const { data } = await axios.get(
-        `${apiUrl}/api/institutes/search?query=${userInput}`,
+        `${apiUrl}/institutes/search?query=${userInput}`,
       );
       setInstituteList(data);
     } catch (error) {

@@ -4,7 +4,7 @@ const logger = require("../utils/logger");
 // @desc    Search for institutes by name
 // @route   GET /api/institutes/search?query=XYZ
 // @access  Public
-exports.searchInstitutes = async (req, res) => {
+module.exports.searchInstitutes = async (req, res) => {
   try {
     const { query } = req.query;
 

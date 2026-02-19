@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getAllItems } from "../../api/items.api";
 import ItemGrid from "../../components/items/ItemGrid";
 import Loader from "../../components/common/Loader";
 import toast from "react-hot-toast";
+import axios from "axios";
 
 const CATEGORIES = [
   "books",
@@ -17,56 +18,173 @@ const CATEGORIES = [
 ];
 
 const AllItems = () => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL-driven filters
+  const page = Number(searchParams.get("page")) || 1;
   const category = searchParams.get("category") || "";
   const institution = searchParams.get("institution") || "";
+  const search = searchParams.get("search") || "";
   const sell = searchParams.get("sell") === "true";
   const rent = searchParams.get("rent") === "true";
   const minPrice = searchParams.get("minPrice") || "";
   const maxPrice = searchParams.get("maxPrice") || "";
 
   const [items, setItems] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
-  /* ---------------- AUTO INSTITUTION (BONUS) ---------------- */
+  const [localSearch, setLocalSearch] = useState(search);
+  const [localInst, setLocalInst] = useState(institution);
+  const [localMin, setLocalMin] = useState(minPrice);
+  const [localMax, setLocalMax] = useState(maxPrice);
+
+  const [instituteList, setInstituteList] = useState([]);
+
   useEffect(() => {
-    if (user?.institution && !searchParams.get("institution")) {
-      setSearchParams((prev) => {
-        const params = Object.fromEntries(prev);
-        params.institution = user.institution;
-        return params;
-      });
-    }
-  }, [user]); // ❗ DO NOT add searchParams here
+    setLocalSearch(search);
+    setLocalInst(institution);
+    setLocalMin(minPrice);
+    setLocalMax(maxPrice);
+  }, [search, institution, minPrice, maxPrice]);
 
-  /* ---------------- FETCH ITEMS ---------------- */
-  const fetchItems = async () => {
+  useEffect(() => {
+    if (authLoading) return; // Wait until we know if the user is logged in
+
+    // Check if we have already auto-applied the filter in this session
+    const hasAutoApplied = sessionStorage.getItem("hasAutoAppliedInstitute");
+    const savedPage = sessionStorage.getItem("lastBrowsedPage");
+
+    // ONLY apply user institution on the VERY FIRST load of the component
+    // If the user manually clears it later, isAuthReady stays true, preventing the loop
+    if (!isAuthReady) {
+      const urlInst = searchParams.get("institution");
+      const urlPage = searchParams.get("page");
+      let newParams = {};
+
+      if (user?.institution && !urlInst && !hasAutoApplied) {
+        newParams.institution = user.institution;
+        sessionStorage.setItem("hasAutoAppliedInstitute", "true");
+      }
+
+      if (!urlPage && savedPage && savedPage !== "1") {
+        newParams.page = savedPage;
+      }
+
+      if (Object.keys(newParams).length > 0) {
+        updateFilters(newParams);
+      }
+      setIsAuthReady(true); // Now we allow fetchItems to run
+    }
+  }, [user, authLoading, isAuthReady, searchParams]);
+
+  /* ---------------- 2. FETCH ITEMS ---------------- */
+  const fetchItems = useCallback(async () => {
+    if (!isAuthReady) return; // 🛑 Prevents fetching "All Colleges" while Auth is loading
+
     setLoading(true);
     try {
       const params = {};
       if (category) params.category = category;
-      if (institution) params.institution = institution;
+      if (institution) params.institution = institution; // USES URL VALUE
+      if (search) params.search = search;
       if (sell) params.sell = true;
       if (rent) params.rent = true;
-
       if (minPrice) params.minPrice = minPrice;
       if (maxPrice) params.maxPrice = maxPrice;
 
       const data = await getAllItems(params);
+
       setItems(data.items || []);
-    } catch {
+      setTotalPages(data.totalPages || 1);
+      setTotalItems(data.totalItems || 0);
+    } catch (error) {
       toast.error("Failed to load items");
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    isAuthReady,
+    category,
+    institution,
+    search,
+    sell,
+    rent,
+    minPrice,
+    maxPrice,
+  ]);
 
   useEffect(() => {
     fetchItems();
-  }, [category, institution, sell, rent, minPrice, maxPrice]);
+  }, [fetchItems]);
+
+  const handleInstituteChange = async (e) => {
+    const userInput = e.target.value.toUpperCase();
+    setLocalInst(userInput);
+
+    if (userInput.length < 2) {
+      setInstituteList([]);
+      return;
+    }
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
+      const { data } = await axios.get(
+        `${apiUrl}/institutes/search?query=${userInput}`,
+      );
+      setInstituteList(data);
+    } catch (error) {
+      console.error("Suggestion error", error);
+    }
+  };
+
+  const handleSelectInstitute = (e) => {
+    const val = e.target.value.toUpperCase();
+    setLocalInst(val); // Update the input box immediately on selection or typing
+
+    // 🟢 work: Check if the value matches a real institute from the database list
+    const exists = instituteList.some((inst) => {
+      const name = typeof inst === "object" ? inst.name : inst;
+      return name.toUpperCase() === val;
+    });
+
+    if (exists || val === "") {
+      updateFilters({ institution: val });
+    }
+  };
+
+  const handleInstituteFocus = async () => {
+    if (instituteList.length > 0) return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
+      const { data } = await axios.get(`${apiUrl}/institutes/search?query=A`);
+      setInstituteList(data);
+    } catch (error) {
+      console.error("Focus error", error);
+    }
+  };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (
+        localSearch !== search ||
+        localMin !== minPrice ||
+        localMax !== maxPrice
+      ) {
+        updateFilters({
+          search: localSearch,
+          minPrice: localMin,
+          maxPrice: localMax,
+          page: "1",
+        });
+      }
+    }, 900);
+
+    return () => clearTimeout(handler);
+  }, [localSearch, localMin, localMax, search, minPrice, maxPrice]);
 
   /* ---------------- FILTER HELPERS ---------------- */
   const updateFilters = (updates) => {
@@ -76,7 +194,15 @@ const AllItems = () => {
       Object.entries(updates).forEach(([key, value]) => {
         if (!value) delete params[key];
         else params[key] = value;
+
+        if (key === "page") sessionStorage.setItem("lastBrowsedPage", value);
       });
+
+      //CRITICAL: Reset to Page 1 if any filter OTHER than page is changed
+      if (!updates.page && params.page) {
+        params.page = "1";
+        sessionStorage.setItem("lastBrowsedPage", "1");
+      }
 
       return params;
     });
@@ -84,12 +210,16 @@ const AllItems = () => {
 
   const resetFilters = () => {
     setSearchParams({});
+    setInstituteList([]);
+    sessionStorage.removeItem("lastBrowsedPage");
+    sessionStorage.setItem("hasAutoAppliedInstitute", "true");
+    setIsFilterOpen(false);
   };
 
-  if (loading) return <Loader />;
+  if (authLoading || (loading && items.length === 0)) return <Loader />;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-8 px-0.5 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* --- PAGE HEADER --- */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
@@ -98,7 +228,9 @@ const AllItems = () => {
               All Listings
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Browse items available for sale and rent across campuses.
+              {totalItems > 0
+                ? `Showing ${items.length} of ${totalItems} items matching your filters`
+                : "Browse items available for sale and rent across campuses."}
             </p>
           </div>
 
@@ -131,23 +263,63 @@ const AllItems = () => {
         </div>
 
         {/* --- MODERN FILTER BAR --- */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-8 sticky top-4 z-30 transition-shadow hover:shadow-md">
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-8 top-4 z-30 transition-shadow hover:shadow-md">
+          <div className="md:col-span-5">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.75 mt-1 block ml-1">
+              Search Items
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Books, projects, electronics..."
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              />
+              <svg
+                className="absolute left-3 top-3 w-5 h-5 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
           <div className="flex flex-col lg:flex-row gap-5 items-start lg:items-end">
             {/* Search Input */}
-            <div className="w-full lg:flex-1">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+            <div className="md:col-span-4">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.75 mt-1 block ml-1">
                 Institution
               </label>
               <div className="relative">
                 <input
+                  id="institution-filter-input"
+                  name="institution"
+                  list="institute-options"
                   type="text"
-                  placeholder="e.g. IIT Delhi"
-                  value={institution}
-                  onChange={(e) =>
-                    updateFilters({ institution: e.target.value })
-                  }
-                  className="block w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                  placeholder="Select or Type Institution"
+                  value={localInst}
+                  onChange={handleInstituteChange}
+                  onInput={handleSelectInstitute}
+                  onFocus={handleInstituteFocus}
+                  autoComplete="off"
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl uppercase focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                 />
+                <datalist id="institute-options">
+                  {instituteList.map((item, index) => (
+                    <option
+                      key={index}
+                      value={typeof item === "object" ? item.name : item}
+                    />
+                  ))}
+                </datalist>
                 <svg
                   className="absolute left-3 top-3 w-5 h-5 text-gray-400"
                   fill="none"
@@ -158,15 +330,15 @@ const AllItems = () => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  ></path>
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                  />
                 </svg>
               </div>
             </div>
 
             {/* Category Dropdown */}
             <div className="w-full lg:w-64">
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 ml-1">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-0.75 mt-1 ml-1">
                 Category
               </label>
               <div className="relative">
@@ -204,7 +376,7 @@ const AllItems = () => {
 
             <div className="flex items-center gap-2 w-full lg:w-auto">
               <div className="relative w-full lg:w-32">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.75 mt-1 ml-1">
                   Min Price
                 </label>
                 <div className="relative">
@@ -214,10 +386,8 @@ const AllItems = () => {
                   <input
                     type="number"
                     placeholder="0"
-                    value={minPrice}
-                    onChange={(e) =>
-                      updateFilters({ minPrice: e.target.value })
-                    }
+                    value={localMin}
+                    onChange={(e) => setLocalMin(e.target.value)}
                     className="block w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -226,7 +396,7 @@ const AllItems = () => {
               <span className="text-gray-300 mt-6 hidden sm:block">—</span>
 
               <div className="relative w-full lg:w-32">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 ml-1">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.75 mt-1 ml-1">
                   Max Price
                 </label>
                 <div className="relative">
@@ -236,10 +406,8 @@ const AllItems = () => {
                   <input
                     type="number"
                     placeholder="Max"
-                    value={maxPrice}
-                    onChange={(e) =>
-                      updateFilters({ maxPrice: e.target.value })
-                    }
+                    value={localMax}
+                    onChange={(e) => setLocalMax(e.target.value)}
                     className="block w-full pl-7 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -408,7 +576,48 @@ const AllItems = () => {
           )
         ) : (
           <div className="animate-fade-in-up">
-            <ItemGrid items={items} />
+            <ItemGrid items={items} variant="list" />
+          </div>
+        )}
+
+        {/* 🟢 ADD THE CONTROLS HERE - OUTSIDE the animated div */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-6 mt-12 mb-10 pb-6">
+            <button
+              disabled={Number(searchParams.get("page") || 1) <= 1}
+              onClick={() =>
+                updateFilters({
+                  page: Number(searchParams.get("page") || 1) - 1,
+                })
+              }
+              className="flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              ← Previous
+            </button>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-400 uppercase tracking-widest font-bold">
+                Page
+              </span>
+              <span className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-100">
+                {searchParams.get("page") || 1}
+              </span>
+              <span className="text-sm text-gray-400 font-bold">
+                of {totalPages}
+              </span>
+            </div>
+
+            <button
+              disabled={Number(searchParams.get("page") || 1) >= totalPages}
+              onClick={() =>
+                updateFilters({
+                  page: Number(searchParams.get("page") || 1) + 1,
+                })
+              }
+              className="flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm"
+            >
+              Next →
+            </button>
           </div>
         )}
       </div>

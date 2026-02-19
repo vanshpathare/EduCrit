@@ -14,7 +14,7 @@ const ForgotPassword = () => {
 
     try {
       setLoading(true);
-      const { data } = await api.post("/api/auth/forgot-password", { email });
+      const { data } = await api.post("/auth/forgot-password", { email });
       toast.success(data.message);
       // ✅ Pass email to the reset page so user doesn't re-type it
       navigate("/reset-password", { state: { email } });

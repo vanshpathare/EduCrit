@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Item = require("../models/Item");
 const bcrypt = require("bcryptjs");
 //const jwt = require("jsonwebtoken");
 const generateToken = require("../utils/generateToken");
@@ -115,7 +116,15 @@ module.exports.login = async function (req, res, next) {
     let user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(400).json({
-        message: "User not found",
+        message: "User not found or invalid credentials",
+      });
+    }
+
+    let isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Invalid password",
       });
     }
 
@@ -126,11 +135,11 @@ module.exports.login = async function (req, res, next) {
       });
     }
 
-    let isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return res.status(400).json({
-        message: "Invalid password",
+    if (user.isActive === false) {
+      return res.status(403).json({
+        message:
+          "This account has been deactivated. Please contact support to reactivate it.",
+        isDeactivated: true,
       });
     }
 
@@ -380,6 +389,44 @@ module.exports.verifyEmail = async (req, res, next) => {
 
     res.json({
       message: "Email verified successfully. You can now login.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports.reactivateAccount = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Find user (including the password field)
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "No account found with this email." });
+    }
+
+    // 2. Verify password before restoring
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res
+        .status(401)
+        .json({ message: "Incorrect password. Cannot restore account." });
+    }
+
+    // 3. Flip the status back to Active
+    user.isActive = true;
+    user.deletedAt = null;
+    await user.save();
+
+    // 4. Restore Items (Bring them back to the marketplace)
+    await Item.updateMany({ owner: user._id }, { isAvailable: true });
+
+    res.status(200).json({
+      message:
+        "Account and listings successfully restored! You can now log in.",
     });
   } catch (error) {
     next(error);

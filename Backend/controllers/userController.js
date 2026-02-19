@@ -199,10 +199,10 @@ module.exports.deleteAccount = async (req, res, next) => {
 
     const user = await User.findById(req.user._id).select("+password");
 
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
+    if (!user || !user.isActive) {
+      return res
+        .status(404)
+        .json({ message: "User not found or already deleted" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -218,10 +218,12 @@ module.exports.deleteAccount = async (req, res, next) => {
     res.cookie("token", "", {
       httpOnly: true,
       expires: new Date(0),
+      secure: process.env.NODE_ENV === "production", // Ensure security in production
+      sameSite: "strict",
     });
 
     res.status(200).json({
-      message: "Account deleted successfully",
+      message: "Account deactivated successfully",
     });
   } catch (error) {
     next(error);
@@ -230,32 +232,36 @@ module.exports.deleteAccount = async (req, res, next) => {
 
 module.exports.updateWhatsapp = async (req, res, next) => {
   try {
-    const { whatsapp } = req.body;
+    const { whatsapp } = req.body; // Incoming: "919876543210"
 
-    // 1. Basic Validation
     if (!whatsapp) {
       return res.status(400).json({ message: "Phone number is required" });
     }
 
-    // Ensure it's a clean 10-digit number
-    const cleanNumber = whatsapp.replace(/\D/g, ""); // Remove non-digits
+    // 🟢 1. Clean the number (remove non-digits)
+    const cleanNumber = whatsapp.replace(/\D/g, "");
 
-    if (cleanNumber.length !== 10) {
-      return res
-        .status(400)
-        .json({ message: "Please enter a valid 10-digit number" });
+    // 🟢 2. Correct Validation (Allow 10 digits OR 12 digits starting with 91)
+    if (cleanNumber.length !== 10 && cleanNumber.length !== 12) {
+      return res.status(400).json({
+        message: "Please enter a valid 10-digit mobile number",
+      });
     }
 
-    // 2. Update User in Database
+    // 🟢 3. Ensure "91" prefix exists before saving to DB
+    const finalNumber =
+      cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+
+    // 4. Update User in Database using Dot Notation
     const user = await User.findByIdAndUpdate(
-      req.user._id, // This comes from authMiddleware
+      req.user._id,
       {
-        whatsapp: {
-          number: cleanNumber,
-          isVerified: false, // Default to false until you manually verify them
+        $set: {
+          "whatsapp.number": finalNumber, // 🟢 Saves as "919876543210"
+          "whatsapp.isVerified": false,
         },
       },
-      { new: true }, // Return the updated user
+      { new: true, runValidators: true },
     );
 
     res.status(200).json({
