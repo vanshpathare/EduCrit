@@ -12,7 +12,7 @@ import Privacy from "./pages/Privacy";
 import Contact from "./pages/Contact";
 import ListYourItem from "./pages/ListYourItem";
 import ForgotPassword from "./pages/auth/ForgotPassword";
-import ResetPassword from "./pages/auth/resetPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 /* Auth pages */
 import Login from "./pages/auth/Login";
