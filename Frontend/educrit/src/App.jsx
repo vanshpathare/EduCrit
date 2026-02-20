@@ -36,6 +36,8 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicOnlyRoute from "./routes/PublicOnlyRoute";
 
 function App() {
+  console.log("API URL:", import.meta.env.VITE_API_URL);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -51,7 +53,7 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
         </Route>
-        console.log("API URL:", import.meta.env.VITE_API_URL)
+
         {/* 🔐 AUTH ROUTES (ONLY FOR LOGGED-OUT USERS) */}
         <Route element={<PublicOnlyRoute />}>
           <Route element={<AuthLayout />}>
