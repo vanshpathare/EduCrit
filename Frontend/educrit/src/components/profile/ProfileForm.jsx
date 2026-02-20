@@ -2,7 +2,7 @@ import { useState } from "react";
 import { updateProfile } from "../../api/user.api";
 import { useAuth } from "../../hooks/useAuth";
 import toast from "react-hot-toast";
-import axios from "axios";
+import api from "../../api/axios";
 
 const ProfileForm = () => {
   const { user, refreshUser } = useAuth();
@@ -30,10 +30,7 @@ const ProfileForm = () => {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/institutes/search?query=${userInput}`,
-      );
+      const { data } = await api.get(`/institutes/search?query=${userInput}`);
       setInstituteList(data);
     } catch (error) {
       console.error("Search error", error);
@@ -44,8 +41,7 @@ const ProfileForm = () => {
   const handleInstituteFocus = async () => {
     if (instituteList.length > 0) return;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(`${apiUrl}/institutes/search?query=A`);
+      const { data } = await api.get(`/institutes/search?query=A`);
       setInstituteList(data);
     } catch (error) {
       console.error("Focus error", error);

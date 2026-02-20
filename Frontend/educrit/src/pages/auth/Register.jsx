@@ -2,7 +2,7 @@ import { useState } from "react"; // Removed useEffect
 import { useNavigate, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { registerUser } from "../../api/auth.api";
-import axios from "axios";
+import api from "../../api/axios";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -36,10 +36,7 @@ const Register = () => {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/institutes/search?query=${userInput}`,
-      );
+      const { data } = await api.get(`/institutes/search?query=${userInput}`);
       setInstituteList(data);
     } catch (error) {
       console.error("Search error", error);
@@ -50,11 +47,7 @@ const Register = () => {
   const handleInstituteFocus = async () => {
     if (instituteList.length > 0) return; // Don't refetch if list exists
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      // Fetch default results (e.g., "A") so the list isn't empty
-      const { data } = await axios.get(
-        `${apiUrl}/api/institutes/search?query=A`,
-      );
+      const { data } = await api.get(`/institutes/search?query=A`);
       setInstituteList(data);
     } catch (error) {
       console.error("Focus error", error);

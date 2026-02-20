@@ -4,7 +4,7 @@ import { getItemById, updateItem } from "../../api/items.api";
 import Loader from "../../components/common/Loader";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth";
-import axios from "axios";
+import api from "../../api/axios";
 
 const EditItem = () => {
   const { id } = useParams();
@@ -86,11 +86,8 @@ const EditItem = () => {
 
     // 3. Call the Search API
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/api/institutes/search?query=${userInput}`,
-      );
-      setInstituteList(data); // Returns top 10 matches
+      const { data } = await api.get(`/institutes/search?query=${userInput}`);
+      setInstituteList(data);
     } catch (error) {
       console.error("Search error", error);
     }

@@ -5,7 +5,7 @@ import { getAllItems } from "../../api/items.api";
 import ItemGrid from "../../components/items/ItemGrid";
 import Loader from "../../components/common/Loader";
 import toast from "react-hot-toast";
-import axios from "axios";
+import api from "../../api/axios";
 
 const CATEGORIES = [
   "books",
@@ -131,10 +131,7 @@ const AllItems = () => {
     }
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(
-        `${apiUrl}/institutes/search?query=${userInput}`,
-      );
+      const { data } = await api.get(`/institutes/search?query=${userInput}`);
       setInstituteList(data);
     } catch (error) {
       console.error("Suggestion error", error);
@@ -159,8 +156,7 @@ const AllItems = () => {
   const handleInstituteFocus = async () => {
     if (instituteList.length > 0) return;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3002";
-      const { data } = await axios.get(`${apiUrl}/institutes/search?query=A`);
+      const { data } = await api.get(`/institutes/search?query=A`);
       setInstituteList(data);
     } catch (error) {
       console.error("Focus error", error);

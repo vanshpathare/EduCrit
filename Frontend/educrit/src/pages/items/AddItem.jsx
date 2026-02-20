@@ -445,7 +445,7 @@ import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import Loader from "../../components/common/Loader";
 import { useAuth } from "../../hooks/useAuth";
-import axios from "axios";
+//import axios from "axios";
 
 const AddItem = () => {
   const navigate = useNavigate();
