@@ -51,7 +51,7 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
         </Route>
-
+        console.log("API URL:", import.meta.env.VITE_API_URL)
         {/* 🔐 AUTH ROUTES (ONLY FOR LOGGED-OUT USERS) */}
         <Route element={<PublicOnlyRoute />}>
           <Route element={<AuthLayout />}>
@@ -62,7 +62,6 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
           </Route>
         </Route>
-
         {/* 🔒 PROTECTED ROUTES */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
@@ -73,7 +72,6 @@ function App() {
             <Route path="/items/:id/edit" element={<EditItem />} />
           </Route>
         </Route>
-
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
