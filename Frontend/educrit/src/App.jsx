@@ -13,6 +13,7 @@ import Contact from "./pages/Contact";
 import ListYourItem from "./pages/ListYourItem";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import SearchPage from "./pages/SearchPage";
 
 /* Auth pages */
 import Login from "./pages/auth/Login";
@@ -45,6 +46,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/items" element={<AllItems />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="/items/:id" element={<ItemDetails />} />
           <Route path="/list-your-item" element={<ListYourItem />} />
 

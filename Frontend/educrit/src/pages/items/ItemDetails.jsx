@@ -6,6 +6,7 @@ import Loader from "../../components/common/Loader";
 import ItemImages from "../../components/items/ItemImages";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth"; // 2. Import useAuth
+import ItemAreaMap from "../../components/items/ItemAreaMap";
 
 const formatName = (fullName) => {
   if (!fullName) return "Unknown Seller";
@@ -45,6 +46,15 @@ const ItemDetails = () => {
   }, [id]);
 
   /* ------------------ HANDLERS ------------------ */
+
+  const handleBack = () => {
+    // Check if there is actual browser history to go back to
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1); // This preserves your long URLs with filters
+    } else {
+      navigate("/items"); // Fallback for WhatsApp/Direct links
+    }
+  };
 
   const checkLogin = () => {
     if (!user) {
@@ -163,6 +173,38 @@ const ItemDetails = () => {
           <span className="capitalize text-gray-700 font-medium">
             {category}
           </span>
+        </div>
+
+        <div className="mb-6 flex items-center justify-between sticky top-0 z-40 bg-gray-50/80 backdrop-blur-md py-2 -mx-2 px-2 lg:relative lg:bg-transparent lg:backdrop-blur-none">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:border-blue-200 transition-all shadow-sm active:scale-95 group"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 group-hover:-translate-x-1 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
+            </svg>
+            <span className="font-bold text-sm">Back</span>
+          </button>
+
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              EduCrit
+            </span>
+            <span className="text-xs font-medium text-blue-600 capitalize">
+              {category}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -307,6 +349,12 @@ const ItemDetails = () => {
                 {description || "No description provided."}
               </div>
             </div>
+
+            {item.location?.coordinates && (
+              <div className="relative z-0 overflow-hidden rounded-2xl border border-gray-100">
+                <ItemAreaMap coordinates={item.location.coordinates} />
+              </div>
+            )}
 
             {/* Seller & Contact - Sticky at bottom on mobile/desktop */}
             <div className="mt-auto pt-8 border-t border-gray-200">

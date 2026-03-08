@@ -8,6 +8,22 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use(
+  (config) => {
+    // Grab the token from storage (make sure 'token' matches your key name)
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      // Standard JWT format: "Bearer <token>"
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  },
+);
+
 // Optional: response interceptor (future-proof)
 api.interceptors.response.use(
   (response) => response,

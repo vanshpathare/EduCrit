@@ -86,6 +86,24 @@ const itemSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+        default: "Point",
+      },
+      coordinates: {
+        type: [Number], // [Longitude, Latitude]
+        required: true,
+        validate: {
+          validator: function (v) {
+            return v.length === 2; // Ensures exactly [lng, lat]
+          },
+          message: "Coordinates must be an array of [longitude, latitude]",
+        },
+      },
+    },
   },
   { timestamps: true },
 );
@@ -96,5 +114,7 @@ itemSchema.pre("save", async function () {
     throw new Error("Item must be available for sell or rent (or both)");
   }
 });
+
+itemSchema.index({ location: "2dsphere" });
 
 module.exports = mongoose.model("Item", itemSchema);

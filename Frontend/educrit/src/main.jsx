@@ -5,6 +5,7 @@ import "./index.css";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./context/AuthContext";
 import axios from "axios";
+import "leaflet/dist/leaflet.css";
 
 axios.defaults.withCredentials = true;
 

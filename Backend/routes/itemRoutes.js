@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const upload = require("../middlewares/uploadMiddleware");
 const itemController = require("../controllers/itemController");
+const { generalLimiter } = require("../middlewares/rateLimiter");
+const authMiddleware = require("../middlewares/authMiddleware");
 
 const {
   createItem,
@@ -11,10 +13,8 @@ const {
   deleteItem,
   getMyListings,
   updateItemImages,
+  getNearbyItems,
 } = require("../controllers/itemController");
-
-const authMiddleware = require("../middlewares/authMiddleware");
-const { generalLimiter } = require("../middlewares/rateLimiter");
 
 /**
  * PUBLIC ROUTES
@@ -22,6 +22,8 @@ const { generalLimiter } = require("../middlewares/rateLimiter");
 
 // Get all public listings
 router.get("/", getAllItems);
+
+router.get("/nearby", getNearbyItems);
 
 /**
  * PRIVATE ROUTES (Login required)
@@ -47,12 +49,7 @@ router.post(
 router.get("/:id", getItemById);
 
 // Update item
-router.put(
-  "/:id",
-  authMiddleware,
-  upload.array("images", 4),
-  itemController.updateItem,
-);
+router.put("/:id", authMiddleware, upload.array("images", 4), updateItem);
 
 // Delete item
 router.delete("/:id", authMiddleware, deleteItem);

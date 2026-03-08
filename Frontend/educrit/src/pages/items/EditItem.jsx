@@ -5,6 +5,7 @@ import Loader from "../../components/common/Loader";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth";
 import api from "../../api/axios";
+import LocationPicker from "../../components/items/LocationPicker";
 
 const EditItem = () => {
   const { id } = useParams();
@@ -23,13 +24,13 @@ const EditItem = () => {
     videoLink: "",
     sell: { enabled: false, price: "" },
     rent: { enabled: false, price: "", period: "day", deposit: "" },
+    location: [72.877, 19.076], // Default [lng, lat] (Mumbai center)
   });
 
   // Image
   const [existingImages, setExistingImages] = useState([]);
   const [newImages, setNewImages] = useState([]);
   const [deletedImageIds, setDeletedImageIds] = useState([]);
-  const [instituteList, setInstituteList] = useState([]);
 
   // Load Data
   useEffect(() => {
@@ -51,7 +52,7 @@ const EditItem = () => {
           description: item.description,
           category: item.category,
           videoLink: item.videoLink || "",
-          institute: user?.institution || item.institution || "",
+          institute: user?.institution || item.institution || "Not specified",
           sell: item.sell || { enabled: false, price: "" },
           rent: {
             enabled: item.rent?.enabled || false,
@@ -59,6 +60,7 @@ const EditItem = () => {
             period: item.rent?.period || "day",
             deposit: item.rent?.deposit || "",
           },
+          location: item.location?.coordinates || [72.877, 19.076],
         });
         setExistingImages(item.images || []);
       } catch {
@@ -72,25 +74,28 @@ const EditItem = () => {
     if (user) fetchItem();
   }, [id, navigate, user]);
 
-  const handleInstituteChange = async (e) => {
-    const userInput = e.target.value.toUpperCase();
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) return toast.error("Geolocation not supported");
 
-    // 1. Update the form display immediately
-    setForm((prev) => ({ ...prev, institute: userInput }));
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { longitude, latitude } = pos.coords;
+        setForm((prev) => ({ ...prev, location: [longitude, latitude] }));
+        setLoading(false);
+        toast.success("Current location detected!");
+      },
+      (err) => {
+        setLoading(false);
+        toast.error("Could not get location. Please pin it manually.");
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
-    // 2. Clear list if input is short (optimization)
-    if (userInput.length < 2) {
-      setInstituteList([]);
-      return;
-    }
-
-    // 3. Call the Search API
-    try {
-      const { data } = await api.get(`/institutes/search?query=${userInput}`);
-      setInstituteList(data);
-    } catch (error) {
-      console.error("Search error", error);
-    }
+  const handleLocationChange = (coords) => {
+    // coords expected as [lng, lat]
+    setForm((prev) => ({ ...prev, location: coords }));
   };
 
   const handleChange = (e) => {
@@ -131,6 +136,14 @@ const EditItem = () => {
       fd.append("videoLink", form.videoLink);
       fd.append("sell", JSON.stringify(form.sell));
       fd.append("rent", JSON.stringify(form.rent));
+
+      fd.append(
+        "location",
+        JSON.stringify({
+          type: "Point",
+          coordinates: form.location, // Sending [lng, lat]
+        }),
+      );
 
       if (deletedImageIds.length > 0) {
         fd.append("imagesToDelete", JSON.stringify(deletedImageIds));
@@ -230,30 +243,80 @@ const EditItem = () => {
                 </div>
 
                 {/* Institute / College */}
+                {/* Institute / College - Locked Version */}
                 <div className="sm:col-span-6">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Institute / College
-                  </label>
-                  <input
-                    list="institute-options"
-                    type="text"
-                    name="institute"
-                    value={form.institute}
-                    onChange={handleInstituteChange}
-                    autoComplete="off" //to prevent browser history
-                    className="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border p-3 uppercase"
-                    placeholder="Search or type your college full name..."
-                    required
-                    readOnly
-                  />
-                  <datalist id="institute-options">
-                    {instituteList.map((item, index) => {
-                      // Safety Check: If item is an object, use item.name. If it's a string, use item.
-                      const instituteName =
-                        typeof item === "object" ? item.name : item;
-                      return <option key={index} value={instituteName} />;
-                    })}
-                  </datalist>
+                  <div className="flex justify-between items-center">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Listing Institute
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/profile")} // Adjust route to your profile edit page
+                      className="text-xs text-blue-600 hover:underline font-medium"
+                    >
+                      Change in Profile
+                    </button>
+                  </div>
+                  <div className="mt-1 relative">
+                    <input
+                      type="text"
+                      value={form.institute}
+                      readOnly
+                      className="block w-full border-gray-200 bg-gray-50 rounded-lg shadow-sm sm:text-sm border p-3 cursor-not-allowed text-gray-500 uppercase"
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-4 w-4 text-gray-400"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-xs text-gray-400">
+                    Items are locked to your campus. To change this, update your
+                    profile settings.
+                  </p>
+                </div>
+
+                <div className="sm:col-span-6 space-y-4">
+                  <div className="flex justify-between items-end">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Handover Location
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleUseCurrentLocation}
+                      className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <span>📍 Use Current Location</span>
+                    </button>
+                  </div>
+
+                  <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-inner">
+                    {!loading && form.location && (
+                      <LocationPicker
+                        onLocationSelect={handleLocationChange}
+                        initialCoords={form.location} // Make sure this is [lng, lat]
+                      />
+                    )}
+                  </div>
+
+                  {form.location ? (
+                    <p className="text-xs text-green-600 font-medium">
+                      ✓ Location pinned successfully!
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-500 font-medium italic">
+                      * Please click on the map to pin where you'll meet the
+                      buyer.
+                    </p>
+                  )}
                 </div>
 
                 {/* Description */}

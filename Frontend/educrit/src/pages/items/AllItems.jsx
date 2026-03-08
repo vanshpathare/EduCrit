@@ -1,5 +1,7 @@
+import { useNavigate } from "react-router-dom";
+import { FiMap } from "react-icons/fi";
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getAllItems } from "../../api/items.api";
 import ItemGrid from "../../components/items/ItemGrid";
@@ -18,8 +20,12 @@ const CATEGORIES = [
 ];
 
 const AllItems = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filtersReady, setFiltersReady] = useState(false);
 
   // URL-driven filters
   const page = Number(searchParams.get("page")) || 1;
@@ -78,16 +84,20 @@ const AllItems = () => {
         updateFilters(newParams);
       }
       setIsAuthReady(true); // Now we allow fetchItems to run
+      setFiltersReady(true);
     }
   }, [user, authLoading, isAuthReady, searchParams]);
 
   /* ---------------- 2. FETCH ITEMS ---------------- */
   const fetchItems = useCallback(async () => {
     if (!isAuthReady) return; // 🛑 Prevents fetching "All Colleges" while Auth is loading
+    if (!filtersReady) return; // 🛑 Prevents fetching before we apply the institution filter on first load
 
     setLoading(true);
     try {
       const params = {};
+      params.page = page;
+      params.limit = 12;
       if (category) params.category = category;
       if (institution) params.institution = institution; // USES URL VALUE
       if (search) params.search = search;
@@ -108,6 +118,8 @@ const AllItems = () => {
     }
   }, [
     isAuthReady,
+    filtersReady,
+    page,
     category,
     institution,
     search,
@@ -209,7 +221,9 @@ const AllItems = () => {
     setInstituteList([]);
     sessionStorage.removeItem("lastBrowsedPage");
     sessionStorage.setItem("hasAutoAppliedInstitute", "true");
-    setIsFilterOpen(false);
+    if (typeof setIsFilterOpen === "function") {
+      setIsFilterOpen(false);
+    }
   };
 
   if (authLoading || (loading && items.length === 0)) return <Loader />;
@@ -230,33 +244,53 @@ const AllItems = () => {
             </p>
           </div>
 
-          {institution && (
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm">
-              <svg
-                className="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                ></path>
-              </svg>
-              Filtering by:{" "}
-              <span className="font-semibold ml-1">{institution}</span>
-              <button
-                onClick={resetFilters}
-                className="ml-3 text-blue-400 hover:text-blue-600 font-bold"
-                title="Clear Filters"
-              >
-                ✕
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => navigate(`/search${location.search}`)}
+            className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-blue-600 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition-all shadow-sm active:scale-95"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 20l-5.447-2.724A2 2 0 013 15.382V5.618a2 2 0 011.447-1.817L9 7m12 13l-5.447-2.724a2 2 0 01-1.447-1.817V5.618a2 2 0 011.447-1.817L21 7m-12 0l6 3m-6 3l6-3m-6 3v7m6-7v7"
+              />
+            </svg>
+            Search on Map
+          </button>
         </div>
+
+        {institution && (
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-sm">
+            <svg
+              className="w-4 h-4 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              ></path>
+            </svg>
+            Filtering by:{" "}
+            <span className="font-semibold ml-1">{institution}</span>
+            <button
+              onClick={resetFilters}
+              className="ml-3 text-blue-400 hover:text-blue-600 font-bold"
+              title="Clear Filters"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* --- MODERN FILTER BAR --- */}
 
@@ -617,6 +651,35 @@ const AllItems = () => {
           </div>
         )}
       </div>
+
+      <button
+        onClick={() => navigate("/search")}
+        className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] 
+                   flex items-center gap-2 px-6 py-3 bg-gray-900 text-white 
+                   rounded-full font-bold shadow-2xl hover:bg-blue-600 
+                   active:scale-95 transition-all"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+        Map View
+      </button>
     </div>
   );
 };

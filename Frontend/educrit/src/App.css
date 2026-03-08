@@ -40,3 +40,35 @@
 .read-the-docs {
   color: #888;
 }
+
+.leaflet-container {
+  height: 400px;
+  width: 100%;
+}
+
+/* 1. Reset the default Leaflet position logic */
+.leaflet-top.leaflet-left {
+    top: 0 !important;
+    left: 0 !important;
+    
+    /* This moves the ENTIRE control block UP */
+    /* Use a larger negative number if -12px isn't enough */
+    transform: translateY(60px) !important; 
+    
+    /* Ensure it doesn't hide behind the search bar wrapper */
+    z-index: 1001 !important; 
+}
+
+/* 2. Fix for the Clipping Issue */
+/* Leaflet maps often hide anything that goes 'outside' the box. 
+   This ensures your buttons don't disappear when they move up. */
+.leaflet-control-container {
+    position: relative;
+    z-index: 1001;
+}
+
+/* 3. Shift it to the right slightly if it's hitting your search bar icons */
+.leaflet-control-zoom {
+    margin-left: 10px !important;
+    margin-top: 10px !important; /* Counter-intuitive: adds space from the absolute top */
+}

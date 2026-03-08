@@ -21,7 +21,7 @@ const Navbar = () => {
     }`;
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b shadow-sm">
+    <nav className="sticky top-0 z-[2000] bg-white border-b shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
         {/* 🟢 MAIN CONTAINER: Added 'relative' so absolute positioning works inside it */}
         <div className="relative flex items-center justify-between h-16">

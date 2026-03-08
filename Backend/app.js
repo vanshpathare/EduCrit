@@ -13,6 +13,7 @@ const itemRoutes = require("./routes/itemRoutes");
 const userRoutes = require("./routes/userRoutes");
 const instituteRoutes = require("./routes/instituteRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const tokenRoutes = require("./routes/tokenRoutes");
 
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
@@ -122,6 +123,8 @@ app.use("/api/items", itemRoutes);
 app.use("/api/users", userRoutes);
 
 app.use("/api/orders", orderRoutes);
+
+app.use("/api", tokenRoutes);
 
 // Test route
 // app.get("/", (req, res) => {

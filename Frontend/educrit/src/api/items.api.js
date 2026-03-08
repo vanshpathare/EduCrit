@@ -15,6 +15,17 @@ export const getMyListings = async () => {
   return res.data;
 };
 
+export const fetchNearbyItems = async (params = {}) => {
+  // params will contain { lng, lat, radiusKm }
+  const res = await api.get("/items/nearby", {
+    params: {
+      limit: 12, // Default limit per load
+      ...params, // This allows the component to override page/limit
+    },
+  });
+  return res.data;
+};
+
 export const createItem = (formData) =>
   api.post("/items", formData, {
     headers: {

@@ -33,12 +33,19 @@ module.exports.createItem = async (req, res, next) => {
       );
     }
 
-    const { title, description, category, sell, rent, videoLink } = req.body;
+    const { title, description, category, sell, rent, videoLink, location } =
+      req.body;
 
     if (!title || !description || !category) {
       return res.status(400).json({
         message: "Title, description and category are required",
       });
+    }
+
+    if (!location) {
+      return res
+        .status(400)
+        .json({ message: "Please select a location on the map" });
     }
 
     if (!allowedCategories.includes(category)) {
@@ -64,14 +71,24 @@ module.exports.createItem = async (req, res, next) => {
     // 🧠 Safe JSON parsing for sell & rent
     let sellData = { enabled: false };
     let rentData = { enabled: false };
+    let locationData;
 
     try {
       if (sell) sellData = JSON.parse(sell);
       if (rent) rentData = JSON.parse(rent);
+      if (location) locationData = JSON.parse(location);
     } catch {
       return res.status(400).json({
-        message: "Invalid sell or rent format",
+        message: "Invalid sell,rent or location format",
       });
+    }
+
+    if (
+      !locationData ||
+      !locationData.coordinates ||
+      locationData.coordinates.length !== 2
+    ) {
+      return res.status(400).json({ message: "Invalid map coordinates" });
     }
 
     // 🔒 SELL validation
@@ -102,6 +119,7 @@ module.exports.createItem = async (req, res, next) => {
       category,
       sell: sellData,
       rent: rentData,
+      location: locationData,
       images: imageData,
       videoLink: videoLink || null,
       owner: req.user._id,
@@ -128,7 +146,7 @@ module.exports.getAllItems = async (req, res, next) => {
       req.query;
 
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 10;
+    const limit = Number(req.query.limit) || 12;
     const skip = (page - 1) * limit;
 
     const conditions = [{ isAvailable: true }];
@@ -256,19 +274,14 @@ module.exports.updateItem = async (req, res, next) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    if (req.body.institute) {
-      const instituteName = req.body.institute.toUpperCase().trim();
-
-      // 1. Learn the new name (Upsert)
-      await Institute.updateOne(
-        { name: instituteName },
-        { $set: { name: instituteName } },
-        { upsert: true },
-      );
-
-      // 2. Update the item's institution field
-      // (Frontend sends 'institute', DB expects 'institution')
-      item.institution = instituteName;
+    if (req.user && req.user.institution) {
+      item.institution = req.user.institution;
+    } else {
+      // Optional: Fallback if for some reason the user has no institution in profile
+      return res.status(400).json({
+        message:
+          "Please update your institution in your profile before editing items.",
+      });
     }
 
     const allowedFields = [
@@ -278,11 +291,12 @@ module.exports.updateItem = async (req, res, next) => {
       "sell",
       "rent",
       "videoLink",
+      "location",
     ];
 
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
-        if (field === "sell" || field === "rent") {
+        if (field === "sell" || field === "rent" || field === "location") {
           let parsed;
           try {
             parsed =
@@ -291,7 +305,7 @@ module.exports.updateItem = async (req, res, next) => {
                 : req.body[field];
           } catch {
             return res.status(400).json({
-              message: "Invalid sell or rent format",
+              message: `Invalid format for ${field}`,
             });
           }
 
@@ -309,6 +323,19 @@ module.exports.updateItem = async (req, res, next) => {
                 message: "Rent price and period are required",
               });
             }
+          }
+
+          if (field === "location") {
+            if (
+              !parsed.coordinates ||
+              !Array.isArray(parsed.coordinates) ||
+              parsed.coordinates.length !== 2
+            ) {
+              return res
+                .status(400)
+                .json({ message: "Invalid location coordinates" });
+            }
+            parsed.type = "Point";
           }
 
           item[field] = parsed;
@@ -529,5 +556,107 @@ module.exports.updateItemImages = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+// backend/controllers/item.controller.js
+
+module.exports.getNearbyItems = async (req, res) => {
+  try {
+    const {
+      lng,
+      lat,
+      radiusKm = 5,
+      category,
+      minPrice,
+      maxPrice,
+      institution,
+      sell,
+      rent,
+      page = 1,
+      limit = 12,
+    } = req.query;
+
+    const parsedLimit = parseInt(limit);
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    let query = { isAvailable: true }; // Only show active items
+
+    if (
+      (lng && (lng < -180 || lng > 180)) ||
+      (lat && (lat < -90 || lat > 90))
+    ) {
+      return res.status(400).json({ message: "Invalid coordinates provided." });
+    }
+
+    if (lng && lat) {
+      query.location = {
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [parseFloat(lng), parseFloat(lat)],
+          },
+          $maxDistance: radiusKm * 1000,
+        },
+      };
+    } else if (institution || req.user?.institution) {
+      query.institution = institution || req.user.institution;
+    } else {
+      return res.status(400).json({ message: "Provide coordinates or login." });
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    // Filter by Sell/Rent toggles
+    if (sell === "true") query["sell.enabled"] = true;
+    if (rent === "true") query["rent.enabled"] = true;
+
+    // Filter by Price Range
+    if (minPrice || maxPrice) {
+      const min = parseFloat(minPrice) || 0;
+      const max = parseFloat(maxPrice) || Infinity;
+
+      // This checks if EITHER the sell price OR the rent price falls in range
+      query.$or = [
+        { "sell.price": { $gte: min, $lte: max }, "sell.enabled": true },
+        { "rent.price": { $gte: min, $lte: max }, "rent.enabled": true },
+      ];
+    }
+    const items = await Item.find(query)
+      .skip(skip)
+      .limit(parsedLimit + 1)
+      .lean();
+
+    const hasMore = items.length > parsedLimit;
+
+    const resultsToSend = hasMore ? items.slice(0, parsedLimit) : items;
+
+    // We use countDocuments on a clone of the query without the $near for performance
+    const countQuery = { ...query };
+    delete countQuery.location;
+    const totalItems = await Item.countDocuments(countQuery);
+
+    const response = resultsToSend.map((item) => {
+      const baseData = {
+        ...item,
+        image: item.images[0]?.url, // Keep this for frontend compatibility
+      };
+
+      // If user is NOT logged in, hide the owner details but show everything else
+      if (!req.user) {
+        // If guest, remove sensitive owner info but KEEP title/price/etc.
+        const { owner, ...publicData } = baseData;
+        return publicData;
+      }
+
+      return baseData; // Full data for logged-in users
+    });
+    res.json({
+      items: response,
+      hasMore: hasMore,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
