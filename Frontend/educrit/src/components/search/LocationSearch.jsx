@@ -31,7 +31,7 @@ const LocationSearch = ({
     try {
       // ✅ Try MapmyIndia first
       const res = await fetch(
-        `/api/mmi-search?query=${encodeURIComponent(searchTerm)}`,
+        `${API_BASE}/api/mmi-search?query=${encodeURIComponent(searchTerm)}`,
       );
 
       if (!res.ok) throw new Error("MMI search failed");
