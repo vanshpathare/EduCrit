@@ -14,6 +14,7 @@ const userRoutes = require("./routes/userRoutes");
 const instituteRoutes = require("./routes/instituteRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const tokenRoutes = require("./routes/tokenRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 // Error middleware
 const errorMiddleware = require("./middlewares/errorMiddleware");
@@ -125,6 +126,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/orders", orderRoutes);
 
 app.use("/api", tokenRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Test route
 // app.get("/", (req, res) => {
@@ -224,6 +226,10 @@ app.get("/items/:id", async (req, res) => {
 // Serve static assets (CSS, JS, Images) from the build folder
 
 // The "Catch-All" Handler for all other pages (Home, Login, etc.)
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", "no-store");
+  next();
+});
 
 if (process.env.NODE_ENV === "production") {
   // Use path.join for more reliable Linux pathing

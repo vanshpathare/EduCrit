@@ -5,8 +5,9 @@ import { createOrder } from "../../api/orders.api";
 import Loader from "../../components/common/Loader";
 import ItemImages from "../../components/items/ItemImages";
 import toast from "react-hot-toast";
-import { useAuth } from "../../hooks/useAuth"; // 2. Import useAuth
+import { useAuth } from "../../hooks/useAuth";
 import ItemAreaMap from "../../components/items/ItemAreaMap";
+import { submitReport } from "../../api/reports.api";
 
 const formatName = (fullName) => {
   if (!fullName) return "Unknown Seller";
@@ -29,6 +30,11 @@ const ItemDetails = () => {
   const [selectedType, setSelectedType] = useState(null); // 'sale' or 'rent'
   const [isProcessing, setIsProcessing] = useState(false);
 
+  //Report states
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
+
   useEffect(() => {
     const fetchItem = async () => {
       try {
@@ -46,6 +52,29 @@ const ItemDetails = () => {
   }, [id]);
 
   /* ------------------ HANDLERS ------------------ */
+
+  const handleReportSubmit = async () => {
+    if (reportReason.trim().length < 10) {
+      toast.error("Please provide a more detailed reason (min 10 chars)");
+      return;
+    }
+
+    try {
+      setIsReporting(true);
+      await submitReport({
+        itemId: item._id,
+        reason: reportReason,
+      });
+
+      toast.success("Thank you. Our safety team will review this item. 🛡️");
+      setShowReportModal(false);
+      setReportReason("");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit report");
+    } finally {
+      setIsReporting(false);
+    }
+  };
 
   const handleBack = () => {
     // Check if there is actual browser history to go back to
@@ -136,6 +165,7 @@ const ItemDetails = () => {
   if (loading) return <Loader />;
 
   if (!item) {
+    console.log("Current User Data:", user);
     return (
       <div className="min-h-[50vh] flex flex-col items-center justify-center text-center px-4">
         <h2 className="text-2xl font-bold text-gray-800">Item Not Found</h2>
@@ -195,6 +225,42 @@ const ItemDetails = () => {
               />
             </svg>
             <span className="font-bold text-sm">Back</span>
+          </button>
+
+          <button
+            onClick={() => {
+              // 1. Basic Auth Check
+              if (!user) return toast.error("Please login to report items 🔒");
+
+              // 2. Updated Verification Check
+              // We check the nested whatsapp object specifically as per your Mongo structure
+              const isPhoneVerified =
+                user.whatsapp && user.whatsapp.isVerified === true;
+              const isAccountVerified = user.isVerified === true;
+
+              if (!isPhoneVerified && !isAccountVerified) {
+                return toast.error("Please verify your number to report items");
+              }
+
+              setShowReportModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-red-50 border border-red-100 text-red-600 hover:bg-red-100 transition-all shadow-sm active:scale-95 group"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 group-hover:scale-110 transition-transform"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <span className="font-bold text-sm">Report</span>
           </button>
 
           <div className="hidden sm:flex flex-col items-end">
@@ -511,6 +577,52 @@ const ItemDetails = () => {
               <button
                 onClick={() => setShowModal(false)}
                 className="w-full py-3 text-sm font-medium text-gray-500 hover:text-gray-700"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- 🚩 NEW REPORT MODAL --- */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl animate-in zoom-in duration-200">
+            <div className="text-center mb-4">
+              <div className="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
+                <span className="text-2xl">🚩</span>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">
+                Report this Item
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Is this item illegal, spam, or a scam?
+              </p>
+            </div>
+
+            <textarea
+              autoFocus
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              placeholder="Describe why this item is being reported..."
+              className="w-full h-32 p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all resize-none"
+            />
+
+            <div className="mt-6 flex flex-col gap-2">
+              <button
+                disabled={isReporting}
+                onClick={handleReportSubmit}
+                className="w-full py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-100 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isReporting ? "Submitting..." : "Submit Report"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowReportModal(false);
+                  setReportReason("");
+                }}
+                className="w-full py-3 text-sm font-medium text-gray-400 hover:text-gray-600"
               >
                 Cancel
               </button>

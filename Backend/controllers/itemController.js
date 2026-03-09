@@ -197,6 +197,8 @@ module.exports.getAllItems = async (req, res, next) => {
       });
     }
 
+    conditions.push({ owner: { $exists: true, $ne: null } });
+
     const finalFilter = { $and: conditions };
 
     // 1. Fetch items and populate the owner
