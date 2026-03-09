@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef } from "react";
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/api$/, "");
 
-console.log("API_BASE:", API_BASE);
-
 const LocationSearch = ({
   onLocationSelect,
   placeholder = "Search location...",
@@ -49,7 +47,7 @@ const LocationSearch = ({
       throw new Error("No MMI results");
     } catch (err) {
       // ✅ Fallback to Nominatim
-      console.warn("Falling back to Nominatim search");
+
       try {
         const res = await fetch(
           `${API_BASE}/api/nominatim-search?query=${encodeURIComponent(searchTerm)}`,
