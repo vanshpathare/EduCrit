@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
 const LocationSearch = ({
   onLocationSelect,
   placeholder = "Search location...",
@@ -48,8 +50,9 @@ const LocationSearch = ({
       console.warn("Falling back to Nominatim search");
       try {
         const res = await fetch(
-          `/api/nominatim-search?query=${encodeURIComponent(searchTerm)}`,
+          `${API_BASE}/api/nominatim-search?query=${encodeURIComponent(searchTerm)}`,
         );
+
         const data = await res.json();
         if (data?.length > 0) {
           setResults(data);
@@ -98,7 +101,7 @@ const LocationSearch = ({
       // STEP 1 — Try MapmyIndia geocode first
       try {
         const mmiRes = await fetch(
-          `/api/mmi-geocode?address=${encodeURIComponent(fullAddress)}`,
+          `${API_BASE}/api/mmi-geocode?address=${encodeURIComponent(fullAddress)}`,
         );
         const mmiData = await mmiRes.json();
         const loc = mmiData.copResults;
@@ -134,7 +137,7 @@ const LocationSearch = ({
         for (const address of variants) {
           try {
             const res = await fetch(
-              `/api/nominatim-search?query=${encodeURIComponent(address)}`,
+              `${API_BASE}/api/nominatim-search?query=${encodeURIComponent(address)}`,
             );
             const data = await res.json();
 
@@ -157,7 +160,7 @@ const LocationSearch = ({
         if (cityOnly) {
           try {
             const res = await fetch(
-              `/api/nominatim-search?query=${encodeURIComponent(`${item.placeName} ${cityOnly}`)}`,
+              `${API_BASE}/api/nominatim-search?query=${encodeURIComponent(`${item.placeName} ${cityOnly}`)}`,
             );
             const data = await res.json();
             if (data?.length > 0) {
