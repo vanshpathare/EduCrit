@@ -580,6 +580,31 @@ const EditItem = () => {
                           <option value="month">Per Month</option>
                         </select>
                       </div>
+
+                      <div className="sm:col-span-6 mt-2">
+                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                          Security Deposit / Collateral
+                        </label>
+                        <input
+                          type="text"
+                          name="rentDeposit" // Or use your handleOptionChange logic
+                          placeholder="e.g. ₹500 or College ID Card"
+                          value={form.rent.deposit}
+                          onChange={(e) =>
+                            handleOptionChange(
+                              "rent",
+                              "deposit",
+                              e.target.value,
+                            )
+                          }
+                          className="block w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1 italic w-full">
+                          * This deposit or collateral will be returned to you
+                          once the item is handed back to the owner in its
+                          original condition.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

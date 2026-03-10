@@ -325,6 +325,16 @@ module.exports.updateItem = async (req, res, next) => {
                 message: "Rent price and period are required",
               });
             }
+
+            if (parsed.deposit !== undefined) {
+              // Optional: Prevent users from sending just empty spaces
+              if (
+                typeof parsed.deposit === "string" &&
+                parsed.deposit.trim() === ""
+              ) {
+                parsed.deposit = "Deposit not mentioned yet"; // Or handle as you prefer
+              }
+            }
           }
 
           if (field === "location") {
@@ -600,9 +610,21 @@ module.exports.getNearbyItems = async (req, res) => {
           $maxDistance: radiusKm * 1000,
         },
       };
-    } else if (institution || req.user?.institution) {
-      query.institution = institution || req.user.institution;
-    } else {
+    }
+    //  else if (institution || req.user?.institution) {
+    //   query.institution = institution || req.user.institution;
+    // } else {
+    //   return res.status(400).json({ message: "Provide coordinates or login." });
+    // }
+
+    // 3. INSTITUTION FILTER (Crucial Change: Move this out of the else block)
+    const targetInstitution = institution || req.user?.institution;
+    if (targetInstitution) {
+      query.institution = targetInstitution;
+    }
+
+    // 4. FALLBACK CHECK
+    if (!query.location && !query.institution) {
       return res.status(400).json({ message: "Provide coordinates or login." });
     }
 

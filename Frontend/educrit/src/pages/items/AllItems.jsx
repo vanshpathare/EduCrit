@@ -653,7 +653,7 @@ const AllItems = () => {
       </div>
 
       <button
-        onClick={() => navigate("/search")}
+        onClick={() => navigate(`/search${location.search}`)}
         className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] 
                    flex items-center gap-2 px-6 py-3 bg-gray-900 text-white 
                    rounded-full font-bold shadow-2xl hover:bg-blue-600 
