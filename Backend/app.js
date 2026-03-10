@@ -231,6 +231,23 @@ app.use("/api", (req, res, next) => {
   next();
 });
 
+app.get("/", (req, res) => {
+  const filePath = path.join(__dirname, "../Frontend/educrit/dist/index.html");
+  fs.readFile(filePath, "utf8", (err, htmlData) => {
+    if (err) return res.status(500).send("Error");
+    const html = htmlData
+      .replace(/__META_TITLE__/g, "EduCrit - Student Marketplace")
+      .replace(
+        /__META_DESCRIPTION__/g,
+        "Buy, Sell, and Rent academic resources on EduCrit",
+      )
+      .replace(/__META_IMAGE__/g, "https://educrit.in/logo-new.png")
+      .replace(/__META_URL__/g, "https://educrit.in");
+    res.set("Content-Type", "text/html");
+    res.send(html);
+  });
+});
+
 if (process.env.NODE_ENV === "production") {
   // Use path.join for more reliable Linux pathing
   const distPath = path.join(__dirname, "../Frontend/educrit/dist");
